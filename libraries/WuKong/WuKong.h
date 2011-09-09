@@ -174,13 +174,14 @@ class ArduinoUno: public Arduino {
 class InfraredUno: public ArduinoUno {
   public:
     InfraredUno()
-    : ArduinoUno(), _sep(2), _left_pin(2), _right_pin(3) {
+    : ArduinoUno(), _sep(2), _left_pin(2), _right_pin(3),
+    _state(false), _state2(false), _state3(false), _state4(false) {
       // Assume the distance between the two IR sensors is known in cm
       // left/right is defined facing the sensor (IR facing you)
     };
 
     // Send 1 if the object is moving to the right of the sensor (IR facing you)
-    // Send -1 otherwise
+    // Send -1 otherwise (not working yet)
     // Send 0 if cannot determine
     void targetDirection() {
       Serial.println("entering targetDirection");
@@ -190,6 +191,29 @@ class InfraredUno: public ArduinoUno {
       // state1: sensors[pin2] 0 -> 1, sensors[pin] 1 -> 1
       // state2: sensors[pin] 1 -> 0, sensors[pin2] 1 -> 1
       // state3: sensors[pin2] 1 -> 0, sensors[pin] 0 -> 0
+
+      DigitalSensor* left = getDigitalSensors()[_left_pin];
+      DigitalSensor* right = getDigitalSensors()[_right_pin];
+
+      if (_state && _state2 && _state3 && _state4) {
+        Serial.print(1);
+        _state = _state2 = _state3 = _state4 = false;
+        return;
+      }
+
+      if (left->val() == 1 && left->change() == 1 && right->val() == 0 && right->change() == 0)
+        _state = true;
+
+      if (left->val() == 1 && left->change() == 0 && right->val() == 1 && right->change() == 1 && _state)
+        _state2 = true;
+
+      if (left->val() == 0 && left->change() == -1 && right->val() == 1 && right->change() == 0 && _state && _state2)
+        _state3 = true;
+
+      if (left->val() == 0 && left->change() == 0 && right->val() == 0 && right->change() == -1 && _state && _state2 && _state3)
+        _state4 = true;
+
+      Serial.print(0);
 
       /*if (uno->getDigitalSensors()[2]->change() == -1) {
       Serial.println("Someone crossed the IR sensor at pin 2");
@@ -229,9 +253,9 @@ class InfraredUno: public ArduinoUno {
     void targetSpeed() {
     };
 
-    Command<InfraredUno>* newRequest(char* method) {
-      if (method == "COUNT")
-        return new Command<InfraredUno>(new InfraredUno, &InfraredUno::targetDirection);
+    Command<InfraredUno>* newRequest(char method) {
+      if (method == 'C')
+        return new Command<InfraredUno>(this, &InfraredUno::targetDirection);
       else
         return NULL;
     };
@@ -239,6 +263,7 @@ class InfraredUno: public ArduinoUno {
   private:
     int _sep;
     int _left_pin, _right_pin;
+    int _state, _state2, _state3, _state4;
     int _speed;
 };
 
@@ -262,40 +287,39 @@ class RequestHandler {
       Serial.println("-1");
     };
 
-    void handle(char* request) {
-      // Request format: [COMMAND] [APP_ID]
-      // Return format: [VALUE] [APP_ID]
-      // JOIN: 0: 0 -> 15: 0
-      // LEAVE: 0: 15 -> 15: 0
-      // DESCRIBE: 0: 15 -> 15: [features, ..]
+    void handle(char request) {
+      // Request format: [COMMAND]
+      // Return format: [VALUE]
+      // JOIN
+      // LEAVE
+      // DESCRIBE
 
       // Since we should know about the board features ahead of time, we can
       // explicitly tell the client which features we support
       // e.g. self-reconfiguration, inspect, some policies, some requirements
 
-      char command[20];
       int value;
       int id;
-      sscanf(request, "%s %*s", command);
+      //sscanf(request, "%s %*s", command);
 
-      if (command == "JOIN") {
-        Serial.println(id);
+      if (request == 'J') {
+        id = random(MAX_ID_NUMBER);
+        _ids[_num_of_clients++] = id;
+        Serial.print(id);
       }
-      else if (command == "DESCRIBE") {
-        sscanf(request, "%*s %d", &id);
-        if (checkForId(id))
-          Serial.println();
+      else if (request == 'D') {
+        //sscanf(request, "%*s %d", &id);
       }
-      else if (command == "COUNT") {
-        sscanf(request, "%*s %d", &id);
-        if (checkForId(id)) {
+      else if (request == 'C') {
+        //sscanf(request, "%*s %d", &id);
+        //if (checkForId(id)) {
           //Request* cmd = new Request(new InfraredUno, &InfraredUno::targetDirection);
-          Request* cmd = ((InfraredUno*)_board)->newRequest(command);
+          Request* cmd = ((InfraredUno*)_board)->newRequest(request);
           appendCallback(cmd);
-        }
+        //}
       }
-      else if (command == "SAMPLERATE") {
-        sscanf(request, "%*s %d %d", &id, &value);
+      else if (request == 'S') {
+        //sscanf(request, "%*s %d %d", &id, &value);
         _delay_in_millis = value;
       }
     };
@@ -320,13 +344,13 @@ class RequestHandler {
       delay(_delay_in_millis);
     };
 
-    char* receiveRequest() {
-      char request[MAX_REQ_LENGTH];
-      int index = 0;
-      while (Serial.available()) {
-        request[index++] = Serial.read();
+    char receiveRequest() {
+      char request;
+
+      if (Serial.available()) {
+        char inByte = Serial.read();
+        request = inByte;
       }
-      request[index] = '\0';
 
       return request;
     };

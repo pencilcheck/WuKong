@@ -16,32 +16,34 @@ If stateB is set before setting stateA, then we can infer that a person is leavi
 Take the first derivative and only care about 0 to 1 for each sensor to set states
 =end
 
+require "rubygems"
 require "serialport"
 
-sp = SerialPort.new ARGV[0], 9600, 8, 1, SerialPort::NONE
-id = 0
-count_id = 0
+#sp = SerialPort.new ARGV[0], 9600, 8, 1, SerialPort::NONE
+sp = SerialPort.new ARGV[0], 9600
+puts "Done initialization"
 count = 0
 
-def setup
-  sp.write "JOIN"
-  id = sp.gets
+=begin
+puts "write JOIN"
+sp.write "JOIN"
+id = sp.read
+puts "ID:", id
 
-  sp.write "DESCRIBE #{id}"
+puts "write DESCRIBE"
+sp.write "DESCRIBE #{id}"
+puts sp.read
+=end
+
+puts "write COUNT"
+sp.puts "C"
+
+while true
   puts sp.gets
-
-  sp.write "COUNT #{id}"
-end
-
-def loop
-  while true do
-    value = sp.gets.split
-    count++ if value[0].to_i == count_id and value[1].to_i == -1
-    count-- if value[0].to_i == count_id and value[1].to_i == 1
+=begin
+  if value == 1
+    count += 1
+    puts count + " people in the room"
   end
+=end
 end
-
-setup()
-loop()
-
-sp.close
