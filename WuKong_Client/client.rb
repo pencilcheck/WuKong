@@ -16,11 +16,10 @@ If stateB is set before setting stateA, then we can infer that a person is leavi
 Take the first derivative and only care about 0 to 1 for each sensor to set states
 =end
 
-require "rubygems"
 require "serialport"
 
-#sp = SerialPort.new ARGV[0], 9600, 8, 1, SerialPort::NONE
-sp = SerialPort.new ARGV[0], 9600
+sp = SerialPort.new ARGV[0], 9600, 8, 1, SerialPort::NONE
+#sp = SerialPort.new ARGV[0], 9600
 puts "Done initialization"
 count = 0
 
@@ -36,14 +35,12 @@ puts sp.read
 =end
 
 puts "write COUNT"
-sp.puts "C"
+sp.puts 'C'
 
 while true
-  puts sp.gets
-=begin
+  value = sp.gets.to_i
   if value == 1
     count += 1
-    puts count + " people in the room"
+    puts "#{count} people in the room"
   end
-=end
 end

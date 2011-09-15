@@ -1,3 +1,5 @@
+#include <pt.h>
+
 /*
   WuKong Server
   Author: Penn Su 
@@ -17,20 +19,16 @@ void setup() {
 
 void loop() {
   while (1) {
-    // Read all data from all pins on the board
-    handler->readAll();
+    // Read data from all pins on the board
+    board->readAll();
 
     // An example of retrieving a value from a pin
     //Serial.println(board->getDigitalSensors()[2]->val());
 
-    handler->oneStep(); // Calling callbacks
-    
     // Receive command and respond to the request
     if (Serial.available())
       handler->handle(handler->receiveRequest());
-    
+
     // Other subroutines here
-    
-    handler->rateControl(); // Delay specified by the requirements from the client
   }
 }
