@@ -426,7 +426,7 @@ public:
 
     while (Serial.available()) {
       request[index++] = Serial.read();
-      delay(1); // Need to experiment with it
+      delay(10); // Need to experiment with it
     }
     request[index] = '\0';
 
