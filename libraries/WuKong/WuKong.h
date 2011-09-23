@@ -52,7 +52,7 @@ static int maxId = 0;
 
 char* genId() {
   //long randomNumber = random(MAX_ID_NUMBER);
-  char id[3];
+  char* id = (char*)malloc(3*sizeof(char));
   sprintf(id, "%d", maxId++);
 
   if (DEBUG) {
@@ -680,9 +680,20 @@ public:
           }
 
           // Concatenate to response
-          if (j > 0)
+          if (j > 0) {
             strcat(response, ",");
+          }
+
+          if (DEBUG) {
+            Serial.println("concatenated ,");
+          }
+
           strcat(response, sensor_id);
+
+          if (DEBUG) {
+            Serial.println("response:");
+            Serial.println(response);
+          }
         }
       }
 
