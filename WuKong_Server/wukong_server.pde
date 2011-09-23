@@ -13,7 +13,7 @@ Arduino* board;
 void setup() {
   handler = new RequestHandler(new InfraredUno());
   board = handler->board();
-  
+  randomSeed(analogRead(0));
   Serial.begin(9600);
 }
 
@@ -23,12 +23,16 @@ void loop() {
     board->readAll();
 
     // An example of retrieving a value from a pin
-    //Serial.println(board->getDigitalSensors()[2]->val());
+    Serial.println(board->getDigitalSensors()[2]->val());
 
     // Receive command and respond to the request
-    if (Serial.available())
-      handler->handle(handler->receiveRequest());
+    //if (Serial.available())
+      //handler->handle(handler->receiveRequest());
 
     // Other subroutines here
+    
+    // Time-driven tasks
+    //handler->step();
   }
 }
+

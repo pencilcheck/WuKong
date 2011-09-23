@@ -7,22 +7,20 @@
 
 #include "WProgram.h"
 
-#define MAX_ID_NUMBER 50
-#define MAX_REQ_LENGTH 5000
+#define MAX_STRING_LENGTH 100
+//#define MAX_ID_NUMBER 50
 #define CALLBACK_BACKLOG 10
+#define STOP 0
+#define START 1
+#define PAUSE 2
+
 #define DEBUG 1
 
 // Implementation of new for avr-gcc
-void * operator new(size_t size) 
-{ 
-  return malloc(size); 
-} 
+void * operator new(size_t size) { return malloc(size); } 
 
 // Implementation of delete for avr-gcc
-void operator delete(void * ptr) 
-{ 
-  free(ptr); 
-}
+void operator delete(void * ptr) { free(ptr); }
 
 // For static keyword
 __extension__ typedef int __guard __attribute__((mode (__DI__))); 
@@ -40,171 +38,142 @@ extern "C" void __cxa_pure_virtual(void);
 void __cxa_pure_virtual(void) {}; 
 
 
+char* genId() {
+  long randomNumber = random(MAX_ID_NUMBER);
+  char id[3];
+  sprintf(id, "%ld");
+  return id;
+};
+
 template <typename T> class Command {
 public:
   typedef void(T::*Action)();
 
-  Command(T* object, Action method, unsigned long delay) {
-    m_object = object;
-    m_method = method;
-    _flag = false;
-    _delay = delay;
+  Command(T* object, Action method, unsigned long delay)
+  : m_object(object), m_method(method), _delay(delay), _id(genId()), _status(1), _mark(0) {};
+
+  void execute() {
+    (m_object->*m_method)();
   };
 
-  void start() {
-    _flag = false;
-  }
+  void setId(char* id) { _id = id; }
 
-  void stop() {
-    _flag = true;
-  }
+  char* id() { return _id; }
 
-  bool started() {
-    return !_flag;
-  }
+  void setDelay(unsigned long delay) { _delay = delay; }
 
-  bool execute() {
-    if (!_flag) {
-      (m_object->*m_method)();
-      return true;
-    }
-    return false;
-  };
+  unsigned long delay() { return _delay; }
 
-  void setId(int id) {
-    _id = id;
-  }
+  void setMark(unsigned long mark) { _mark = mark; }
 
-  int id() {
-    return _id;
-  }
+  unsigned long mark() { return _mark; }
 
-  unsigned long delay() {
-    return _delay;
-  }
+  void setStatus(int status) { _status = status; }
 
-  bool terminated() {
-    return _flag;
-  }
+  int status() { return _status; }
+
+  struct pt proto() { return _proto; };
 
 private:
   T* m_object;
   Action m_method;
-  int _id;
-  bool _flag; // Termination flag
+  char _id[MAX_STRING_LENGTH];
+  int _status; // 0 pause, 1 start
   unsigned long _delay;
+  unsigned long _mark;
+  struct pt _proto;
 };
 
 class BasicSensor {
 public:
-  BasicSensor(int pin, int mode)
-  : _pin(pin), _val(0), _change(0) {
-    pinMode(_pin, mode);
-  };
+  BasicSensor(int pin)
+  : _pin(pin), _val(0) {};
 
   virtual int read() {};
 
   virtual void write() {};
 
-  void setPin(int pin) {
-    _pin = pin;
-  };
+  void setPin(int pin) { _pin = pin; };
+  int pin() { return _pin; };
 
-  void setMode(int mode) {
-    pinMode(_pin, mode);
-  };
-
-  int val() {
-    return _val;
-  };
-
-  int change() {
-    return _change;
+  char* toString() {
+    char response[MAX_STRING_LENGTH];
+    sprintf(response, "%d:%d", _pin, _val);
+    return response;
   };
 
 protected:
-  int _pin;
-  int _change;
-  int _val;
+  int _pin, _val;
 };
 
 class DigitalSensor: public BasicSensor {
 public:
   DigitalSensor(int pin, int mode)
-  : BasicSensor(pin, mode) {};
-      
+  : BasicSensor(pin) { _mode = mode; pinMode(_pin, mode); };
+
   int read() {
-    int val = digitalRead(_pin);
-
-    if (val > _val) _change = 1;
-    else if (val < _val) _change = -1;
-    else _change = 0;
-
-    _val = val;
+    _val = digitalRead(_pin);
     return _val;
   };
 
-  void write(int value) {
-    digitalWrite(_pin, value);
-
-    if (value > _val) _change = 1;
-    else if (value < _val) _change = -1;
-    else _change = 0;
-
-    _val = value;
+  void write(int val) {
+    _val = val;
+    digitalWrite(_pin, _val);
   };
+
+  void setMode(int mode) { pinMode(_pin, mode); };
+  int mode() { return _mode; };
+
+private:
+  int _mode;
 };
 
 class AnalogSensor: public BasicSensor {
 public:
-  AnalogSensor(int pin, int mode)
-  : BasicSensor(pin, mode) {};
+  AnalogSensor(int pin)
+  : BasicSensor(pin) {};
       
   int read() {
-    int val = analogRead(_pin);
-
-    if (val > _val) _change = 1;
-    else if (val < _val) _change = -1;
-    else _change = 0;
-
-    _val = val;
+    _val = analogRead(_pin);
     return _val;
   };
 
-  void write(int value) {
-    analogWrite(_pin, value);
-
-    if (value > _val) _change = 1;
-    else if (value < _val) _change = -1;
-    else _change = 0;
-
-    _val = value;
+  void write(int val) {
+    _val = val;
+    analogWrite(_pin, _val);
   };
 };
 
 class Arduino {
 public:
-  Arduino()
-  : _num_digital_pins(0), _num_analog_pins(0) {};
+  Arduino(int dp, int ap)
+  : _num_digital_pins(dp), _num_analog_pins(ap) {};
 
-  DigitalSensor** getDigitalSensors() {
-    return _digital_sensors;
+  DigitalSensor** getDigitalSensors() { return _digital_sensors; };
+  int readDigitalSensor(int pin) { 
+    if (pin < _num_digital_pins)
+      return _digital_sensors[pin]->read(); 
+    else
+      return -1;
   };
 
-  AnalogSensor** getAnalogSensors() {
-    return _analog_sensors;
+  AnalogSensor** getAnalogSensors() { return _analog_sensors; };
+  int readAnalogSensor(int pin) { 
+    if (pin < _num_analog_pins)
+      return _analog_sensors[pin]->read(); 
+    else
+      return -1;
   };
-
+/*
   void readAll() {
     for (int i = 0; i < _num_analog_pins; i++)
       _analog_sensors[i]->read();
     for (int i = 0; i < _num_digital_pins; i++)
       _digital_sensors[i]->read();
   };
-
+*/
 protected:
-  int _num_digital_pins;
-  int _num_analog_pins;
+  int _num_digital_pins, _num_analog_pins;
   DigitalSensor** _digital_sensors;
   AnalogSensor** _analog_sensors;
 };
@@ -212,21 +181,17 @@ protected:
 class ArduinoUno: public Arduino {
 public:
   ArduinoUno()
-  : Arduino() {
-    _num_digital_pins = 14;
-    _num_analog_pins = 6;
+  : Arduino(14, 6) {
     _digital_sensors = (DigitalSensor**)malloc(sizeof(DigitalSensor*)*_num_digital_pins);
-    for (int i = 0; i < _num_digital_pins; ++i) {
+    for (int i = 0; i < _num_digital_pins; ++i)
       _digital_sensors[i] = new DigitalSensor(i, INPUT);
-    }
 
     _analog_sensors = (AnalogSensor**)malloc(sizeof(AnalogSensor*)*_num_analog_pins);
-    for (int i = 0; i < _num_analog_pins; ++i) {
-      _analog_sensors[i] = new AnalogSensor(i, INPUT);
-    }
+    for (int i = 0; i < _num_analog_pins; ++i)
+      _analog_sensors[i] = new AnalogSensor(i);
   };
 };
-
+/*
 // Class specific to the board, should be developed by the developers
 class InfraredUno: public ArduinoUno {
 public:
@@ -271,18 +236,19 @@ public:
   void targetSpeed() {
   };
 
-  Command<InfraredUno>* handleRequest(char request) {
-    if (request == 'C') {
+  Command<InfraredUno>* taskFromRequest(char* request) {
+    char* command = strtok(request, " ");
+    if (command == "") {
       // Delay should be determined by WuKong but we are letting developers to
       // do that right now 5000 is 5 secs
-      Command<InfraredUno>* cmd = new Command<InfraredUno>(this, &InfraredUno::targetDirection, 5000);
+      //Command<InfraredUno>* cmd = new Command<InfraredUno>(this, &InfraredUno::targetDirection, 5000);
 
       // Add one time driven callback as our subroutine 
-      //_handler->addToScheduler(cmd);
-      return cmd;
+      //_handler->addToPusher(cmd);
+      //return cmd;
     }
-    else
-      return NULL;
+
+    return NULL;
   };
 
 private:
@@ -291,15 +257,16 @@ private:
   int _state, _state2;
   int _speed;
 };
-
 #define BoardName InfraredUno
-
+*/
 /* End of custom board implementation */
 
 
-typedef Command<BoardName> Task;
+//typedef Command<BoardName> Task;
+//typedef Command<BasicSensor> InternalTask;
 
-// Time driven scheduler
+
+// Event driven handler
 static int scheduler(struct pt* pt, Task* task) {
   PT_BEGIN(pt);
 
@@ -307,9 +274,9 @@ static int scheduler(struct pt* pt, Task* task) {
     static unsigned long start = millis();
     // Execute callbacks, if returned false, terminate the thread and evict the
     // callback from the queue
-    if (!task->execute()) {
-      break;
-    }
+    //if (!task->execute()) {
+      //break;
+    //}
 
     static unsigned long end = millis();
     // Will execute immediately if the execution time is longer than sample
@@ -320,98 +287,184 @@ static int scheduler(struct pt* pt, Task* task) {
   PT_END(pt);
 }
 
+// Not done
+static int pusher(struct pt* pt, Task* task) {
+  PT_BEGIN(pt);
+
+  while (1) {
+    task->setMark(millis());
+    PT_WAIT_UNTIL(pt, (millis() - task->mark()) % task->delay() == 0);
+    char response[MAX_STRING_LENGTH];
+    //response = task->execute();
+    Serial.print("push ");
+    //Serial.println(response);
+  }
+
+  PT_END(pt);
+}
+
 
 class RequestHandler {
 public:
   RequestHandler(Arduino* board)
-  : _num_of_tasks(0), _num_of_clients(0), _board(board) {};
+  : _num_of_tasks(0), _board(board) {};
 
-  char receiveRequest() {
-    char request;
+  void setBoard(Arduino* board) { _board = board; };
 
-    if (Serial.available()) {
-      char inByte = Serial.read();
-      request = inByte;
+  Arduino* board() { return _board; };
+
+  void addToQueue(Task* task) { _tasks[_num_of_tasks++] = task; }
+
+  char* receiveRequest() {
+    char request[MAX_STRING_LENGTH];
+    int index = 0;
+
+    while (Serial.available()) {
+      request[index++] = Serial.read();
+      delay(1); // Need to experiment with it
     }
+    request[index] = '\0';
 
     return request;
   };
 
-  void handle(char request) {
-    // Request format: [COMMAND]
-    // Return format: [VALUE]
-    // JOIN
-    // LEAVE
+  void handle(char request[]) {
     // DESCRIBE
-    // COUNT
+    // (UN)READ
+    // (UN)WRITE
+    // CONFIG
+    // INSERT
+    // DELETE
+    // UPDATE
 
-    // Since we should know about the board features ahead of time, we can
-    // explicitly tell the client which features we support
-    // e.g. self-reconfiguration, inspect, some policies, some requirements
-
-    int value;
-    int id;
+    char* command = strtok(request, " ");
     //sscanf(request, "%s %*s", command);
 
-    if (request == 'J') {
-      id = random(MAX_ID_NUMBER);
-      _ids[_num_of_clients++] = id;
-      Serial.print(id);
-    }
-    else if (request == 'D') {
-    }
-    else {
-      //sscanf(request, "%*s %d", &id);
-      addToScheduler(((BoardName*)_board)->handleRequest(request));
+    if (command == "push") {
+      char response[MAX_STRING_LENGTH];
+      int index = 0; index += sprintf(response, "push ");
 
-      // Start scheduler and interrupt handler if there is any
-      startAll();
+      char* type = strtok(NULL, " ");
+      char* pinAndIntervals = strtok(NULL, " ");
+      while (type && pinAndIntervals) {
+        if (type == "D") {
+          char* pinAndInterval = strtok(pinAndIntervals, ",");
+          char* pin;
+          unsigned long interval;
+          sscanf(pinAndInterval, "%s:%ld", pin, &interval);
+
+          while (pinAndInterval != NULL) {
+            //addToPusher(new InternalTask(_board->getDigitalSensors()[atoi(pin)], BasicSensor::toString, interval));
+
+            int value = _board->readDigitalSensor(atoi(pin));
+            if (value != -1) {
+              index += sprintf(response + index, "%s:%d", pin, value);
+            }
+            pinAndInterval = strtok(NULL, ",");
+            if (pin != NULL)
+              index += sprintf(response + index, ",");
+          }
+        }
+        else if (type == "A") {
+          char* pinAndInterval = strtok(pinAndIntervals, ",");
+          char* pin;
+          unsigned long interval;
+          sscanf(pinAndInterval, "%s:%ld", pin, &interval);
+
+          while (pinAndInterval != NULL) {
+            //addToPusher(new InternalTask(_board->getAnalogSensors()[atoi(pin)], BasicSensor::toString, interval));
+
+            int value = _board->readAnalogSensor(atoi(pin));
+            if (value != -1) {
+              index += sprintf(response + index, "%s:%d", pin, value);
+            }
+            pinAndInterval = strtok(NULL, ",");
+            if (pin != NULL)
+              index += sprintf(response + index, ",");
+          }
+        }
+
+        type = strtok(NULL, " ");
+        pinAndIntervals = strtok(NULL, " ");
+      }
+      // Response below
+      Serial.println(response);
+    }
+    else if (command == "pull") {
+      char response[MAX_STRING_LENGTH];
+      int index = 0; index += sprintf(response, "pull ");
+
+      char* type = strtok(NULL, " ");
+      char* pins = strtok(NULL, " ");
+      while (type && pins) {
+        if (type == "D") {
+          char* pin = strtok(pins, ",");
+          while (pin != NULL) {
+            int value = _board->readDigitalSensor(atoi(pin));
+            if (value != -1) {
+              index += sprintf(response + index, "%s:%d", pin, value);
+            }
+            pin = strtok(NULL, ",");
+            if (pin != NULL)
+              index += sprintf(response + index, ",");
+          }
+        }
+        else if (type == "A") {
+          char* pin = strtok(pins, ",");
+          while (pin != NULL) {
+            int value = _board->readAnalogSensor(atoi(pin));
+            if (value != -1) {
+              index += sprintf(response + index, "%s:%d", pin, value);
+            }
+            pin = strtok(NULL, ",");
+            if (pin != NULL)
+              index += sprintf(response + index, ",");
+          }
+        }
+
+        type = strtok(NULL, " ");
+        pins = strtok(NULL, " ");
+      }
+      // Response below
+      Serial.println(response);
+    }
+    else if (command == "stop") {
+      char* type = strtok(NULL, " ");
+      char* pins = strtok(NULL, " ");
+      while (type && pins) {
+
+      }
+      // Response below
+    }
+    else if (command == "write") {
+      char* type = strtok(NULL, " ");
+      char* pinAndValues = strtok(NULL, " ");
+      while (type && pinAndValues) {
+
+      }
+      // Response below
+    }
+    else if (command == "config") {
+      char* keyAndValues = strtok(NULL, " ");
+      while (keyAndValues) {
+
+      }
+      // Response below
     }
   };
 
-  void addToScheduler(Task* task) {
-    task->setId(_num_of_tasks);
-    _tasks[_num_of_tasks++] = task;
-  }
-
-  void startAll() {
+  void step() {
     for (int i = 0; i < _num_of_tasks; ++i) {
-      // Spawn worker threads
-      if (!_tasks[i]->started()) {
-
-        _tasks[i]->start();
-        int id = _tasks[i]->id();
-        // Start the thread
-        struct pt proto;
-        PT_INIT(&proto);
-        scheduler(&proto, _tasks[i]);
+      // run proto worker threads for tasks
+      if (_tasks[i]->status() == START) {
+        PT_INIT(&(_internal_tasks[i]->proto()));
+        pusher(&(_internal_tasks[i]->proto()), _internal_tasks[i]);
       }
     }
-
-    // Hook interrupts to events
   }
-
-  // Execute task with specific id
-  bool execute(int id) {
-    for (int i = 0; i < _num_of_tasks; i++) {
-      if (_tasks[i]->id() == id) {
-        return _tasks[i]->execute();
-      }
-    }
-
-    return false;
-  };
-
-  Arduino* board() {
-    return _board;
-  };
 
   // Dummy call for simple security function
   bool authenticate(int id) {
-    for (int i = 0; i < _num_of_clients; ++i) {
-      if (_ids[i] == id)
-        return true;
-    }
     return false;
   };
 
@@ -421,11 +474,12 @@ public:
 
 private:
   Arduino* _board;
-  int _num_of_clients;
-  int _ids[MAX_ID_NUMBER];
   int _num_of_tasks;
   Task* _tasks[CALLBACK_BACKLOG];
+  int _num_of_internal_tasks;
+  InternalTask* _internal_tasks[CALLBACK_BACKLOG];
 };
+
 
 
 
