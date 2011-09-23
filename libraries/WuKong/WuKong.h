@@ -429,6 +429,9 @@ public:
       delay(10); // Need to experiment with it
     }
     request[index] = '\0';
+    if (DEBUG) {
+      Serial.println(request);
+    }
 
     return request;
   };
@@ -465,7 +468,7 @@ public:
     }
     char response[MAX_STRING_LENGTH];
 
-    if (command == "read") {
+    if (!strcmp(command, "read")) {
       char* sensor;
       char* sensors[MAX_VIRTUAL_SENSORS];
       int index = 0;
@@ -509,7 +512,7 @@ public:
 
       Serial.println(response);
     }
-    else if (command == "write") {
+    else if (!strcmp(command, "write")) {
       char* sensor;
       char* sensors[MAX_VIRTUAL_SENSORS];
       int index = 0;
@@ -552,7 +555,7 @@ public:
 
       Serial.println(response);
     }
-    else if (command == "disable") {
+    else if (!strcmp(command, "disable")) {
       char* sensors[MAX_VIRTUAL_SENSORS];
       int index = 0;
 
@@ -581,7 +584,7 @@ public:
 
       Serial.println(response);
     }
-    else if (command == "insert") {
+    else if (!strcmp(command, "insert")) {
       if (DEBUG) {
         Serial.println("in insert");
       }
@@ -645,10 +648,10 @@ public:
 
       Serial.println(response);
     }
-    else if (command == "update") {
+    else if (!strcmp(command, "update")) {
       // Implement later
     }
-    else if (command == "delete") {
+    else if (!strcmp(command, "delete")) {
       char* sensors[MAX_VIRTUAL_SENSORS];
       int index = 0;
 
@@ -677,7 +680,7 @@ public:
 
       Serial.println(response);
     }
-    else if (command == "describe") {
+    else if (!strcmp(command, "describe")) {
       // For later
     }
   };
