@@ -48,10 +48,17 @@ extern "C" void __cxa_pure_virtual(void);
 void __cxa_pure_virtual(void) {}; 
 
 
+static int maxId = 0;
+
 char* genId() {
-  long randomNumber = random(MAX_ID_NUMBER);
+  //long randomNumber = random(MAX_ID_NUMBER);
   char id[3];
-  sprintf(id, "%ld");
+  sprintf(id, "%d", maxId++);
+
+  if (DEBUG) {
+    Serial.println("almost done in genId");
+    Serial.println(id);
+  }
   return id;
 };
 /*
@@ -588,6 +595,7 @@ public:
       if (DEBUG) {
         Serial.println("in insert");
       }
+
       char* sensor;
       char* sensors[MAX_VIRTUAL_SENSORS];
       int index = 0;
@@ -595,10 +603,25 @@ public:
         sensors[index++] = sensor;
       }
 
+      if (DEBUG) {
+        Serial.println("got all sensors");
+      }
       sprintf(response, "success %s insert sensor_id:", BOARD_ID);
 
+      if (DEBUG) {
+        Serial.println("done sprintf response");
+      }
+
       for (int j = 0; j < index; ++j) {
+        if (DEBUG) {
+          Serial.println("in index loop");
+        }
+
         char* sensor_id = genId();
+        if (DEBUG) {
+          Serial.println("done genId");
+        }
+
         char* type = "";
         int pin = 0;
         int interval = 0;
@@ -608,7 +631,11 @@ public:
 
         char* attribute = strtok(sensor, ",");
         char* key, * value;
-        while (attribute != NULL) {
+        while (attribute) {
+          if (DEBUG) {
+            Serial.println("in while attribute loop");
+          }
+
           sscanf(attribute, "%s:%s", key, value);
           if (!strcmp(key, "type")) {
             type = value;
@@ -632,12 +659,25 @@ public:
           attribute = strtok(NULL, ",");
         }
 
-        // Activate existing virtual sensor
-        if (_board->hasVirtualSensorId(sensor_id)) {
+        if (DEBUG) {
+          Serial.println("done with while loop");
+        }
+
+        // Insert new virtual sensor, if id exist then don't create
+        if (!_board->hasVirtualSensorId(sensor_id)) {
+
+          if (DEBUG) {
+            Serial.println("no existing virtual sensor id");
+          }
+
           // Create a virtual sensor
           // VirtualSensor(char* id, char* type, int pin, int interval, char* sensitivity, char* address, int mode)
           _board->addVirtualSensor(new VirtualSensor(sensor_id, type, pin, interval, sensitivity, address, mode));
           // Already started
+
+          if (DEBUG) {
+            Serial.println("added virtual sensor");
+          }
 
           // Concatenate to response
           if (j > 0)
@@ -646,6 +686,11 @@ public:
         }
       }
 
+      // Fail response if there is no added new sensors
+
+      if (DEBUG) {
+        Serial.println("ready to send response back");
+      }
       Serial.println(response);
     }
     else if (!strcmp(command, "update")) {
