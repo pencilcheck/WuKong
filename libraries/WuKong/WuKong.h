@@ -13,7 +13,7 @@
 #else
 #define MAX_VIRTUAL_SENSORS 50
 #endif
-//#define MAX_ID_NUMBER 50
+#define MAX_ID_NUMBER 50
 #define CALLBACK_BACKLOG 10
 
 #define STOP 0
@@ -24,7 +24,7 @@
 
 #define DEBUG 1
 
-#define BOARD_ID 12345
+#define BOARD_ID "12345"
 
 // Implementation of new for avr-gcc
 void * operator new(size_t size) { return malloc(size); } 
@@ -148,7 +148,7 @@ public:
   char* address() { return _address; };
 
   void setType(char* type) { _type = type; };
-  int type() { return _type; };
+  char* type() { return _type; };
 
   void setPin(int pin) { _pin = pin; };
   int pin() { return _pin; };
@@ -196,7 +196,7 @@ public:
 
   VirtualSensor* getVirtualSensor(char* id) {
     for (int i = 0; i < _num_virtual_sensors; ++i) {
-      if (!strcmp(_virtual_sensors[i]->getId(), id)) {
+      if (!strcmp(_virtual_sensors[i]->sensorId(), id)) {
         return _virtual_sensors[i];
       }
     }
@@ -216,7 +216,7 @@ public:
         PT_INIT(&(_virtual_sensors[i]->proto()));
         if (_virtual_sensors[i]->mode() == READ) {
           if (i > 0)
-            response = strcat(response, ",");
+            strcat(response, ",");
           pusher(&(_virtual_sensors[i]->proto()), _virtual_sensors[i], response);
         } else {
           pusher(&(_virtual_sensors[i]->proto()), _virtual_sensors[i], NULL);
@@ -242,6 +242,27 @@ public:
   void deleteVirtualSensor(char* id) {
     delete getVirtualSensor(id);
   };
+
+  static int pusher(struct pt* pt, VirtualSensor* sensor, char* response) {
+    PT_BEGIN(pt);
+
+    while (1) {
+      sensor->setMark(millis());
+      PT_WAIT_UNTIL(pt, (millis() - sensor->mark()) % sensor->interval() == 0);
+      if (sensor->mode() == WRITE) {
+        sensor->write(HIGH);
+      }
+      else {
+        sensor->read();
+      }
+      // only for read
+      if (response) {
+        strcat(response, (const char*)sensor->toString());
+      }
+    }
+
+    PT_END(pt);
+  }
 
   //DigitalSensor** getDigitalSensors() { return _digital_sensors; };
   //int readDigitalSensor(int pin) { 
@@ -388,26 +409,6 @@ static int scheduler(struct pt* pt, Task* task) {
 }
 */
 
-static int pusher(struct pt* pt, VirtualSensor* sensor, char* response) {
-  PT_BEGIN(pt);
-
-  while (1) {
-    sensor->setMark(millis());
-    PT_WAIT_UNTIL(pt, (millis() - sensor->mark()) % sensor->interval() == 0);
-    if (sensor->mode() == WRITE) {
-      sensor->write(HIGH);
-    }
-    else {
-      sensor->read();
-    }
-    // only for read
-    if (response) {
-      strcat(response, (const char*)sensor->toString());
-    }
-  }
-
-  PT_END(pt);
-}
 
 
 class RequestHandler {
@@ -441,7 +442,7 @@ public:
     // DISABLE
 
     char* board_id = strtok(request, " ");
-    if (board_id != BOARD_ID)
+    if (strcmp(board_id, BOARD_ID))
       return;
     char* command = strtok(NULL, " ");
     //sscanf(request, "%s %*s", command);
@@ -539,7 +540,7 @@ public:
       char* sensors[MAX_VIRTUAL_SENSORS];
       int index = 0;
 
-      char* sensor = strtok(NULL, " ")
+      char* sensor = strtok(NULL, " ");
       sensor = strstr(sensor, ":")+1;
       char* id = strtok(sensor, ",");
       while (id != NULL) {
@@ -558,7 +559,7 @@ public:
           // Concatenate to response
           if (j > 0)
             strcat(response, ",");
-          strcat(response, sensor_id);
+          strcat(response, sensors[j]);
         }
       }
 
@@ -632,7 +633,7 @@ public:
       char* sensors[MAX_VIRTUAL_SENSORS];
       int index = 0;
 
-      char* sensor = strtok(NULL, " ")
+      char* sensor = strtok(NULL, " ");
       sensor = strstr(sensor, ":")+1;
       char* id = strtok(sensor, ",");
       while (id != NULL) {
@@ -651,7 +652,7 @@ public:
           // Concatenate to response
           if (j > 0)
             strcat(response, ",");
-          strcat(response, sensor_id);
+          strcat(response, sensors[j]);
         }
       }
 
