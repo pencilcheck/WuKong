@@ -209,6 +209,7 @@ public:
 
   void step() {
     char response[MAX_STRING_LENGTH];
+    memset(response, 0, MAX_STRING_LENGTH);
     
     for (int i = 0; i < _num_virtual_sensors; ++i) {
       // run proto worker threads for tasks
@@ -441,12 +442,27 @@ public:
     // WRITE
     // DISABLE
 
+    if (DEBUG) {
+      Serial.println("handling request");
+    }
     char* board_id = strtok(request, " ");
+
+    if (DEBUG) {
+      Serial.println("comparing board_id");
+    }
     if (strcmp(board_id, BOARD_ID))
       return;
+
+    if (DEBUG) {
+      Serial.println("grabbing command");
+    }
     char* command = strtok(NULL, " ");
     //sscanf(request, "%s %*s", command);
 
+
+    if (DEBUG) {
+      Serial.println(command);
+    }
     char response[MAX_STRING_LENGTH];
 
     if (command == "read") {
@@ -566,6 +582,9 @@ public:
       Serial.println(response);
     }
     else if (command == "insert") {
+      if (DEBUG) {
+        Serial.println("in insert");
+      }
       char* sensor;
       char* sensors[MAX_VIRTUAL_SENSORS];
       int index = 0;
