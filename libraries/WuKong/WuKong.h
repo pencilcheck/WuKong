@@ -175,7 +175,7 @@ public:
   };
 
   void setSetValue(int set_value) { _set_value = set_value; };
-  int set_value() { return _set_value; };
+  int setValue() { return _set_value; };
 
   void setSensitivity(char* sensitivity) { _sensitivity = sensitivity; };
   char* sensitivity() { return _sensitivity; };
@@ -633,7 +633,7 @@ public:
           if (DEBUG) {
             Serial.println("writing");
           }
-          _board->getVirtualSensor(sensor_id)->write(HIGH);
+          _board->getVirtualSensor(sensor_id)->write(_board->getVirtualSensor(sensor_id)->setValue());
           //_board->getVirtualSensor(sensor_id)->write(sensot->set_value()); // for analog
 
           // Concatenate to response
@@ -766,6 +766,7 @@ public:
         // Activate existing virtual sensor
         if (_board->hasVirtualSensorId(sensors[j])) {
           // Stop sensor
+          _board->stopVirtualSensor(sensors[j]);
           _board->deleteVirtualSensor(sensors[j]);
 
           // Concatenate to response
