@@ -248,6 +248,7 @@ public:
     for (int i = 0; i < MAX_VIRTUAL_SENSORS; ++i) {
       if (_virtual_sensors[i] == NULL) {
         _virtual_sensors[i] = sensor;
+        break;
       }
     }
   };
@@ -272,17 +273,19 @@ public:
     memset(response, 0, MAX_STRING_LENGTH);
     
     int count = 0;
-    for (int i = 0; i < _num_virtual_sensors; ++i) {
-      // run proto worker threads for tasks
-      if (_virtual_sensors[i]->status() == START) {
-        //PT_INIT(&(_virtual_sensors[i]->proto()));
-        if (_virtual_sensors[i]->mode() == READ) {
-          if (count > 0)
-            strcat(response, ",");
+    for (int i = 0; i < MAX_VIRTUAL_SENSORS; ++i) {
+      if (_virtual_sensors[i] != NULL) {
+        // run proto worker threads for tasks
+        if (_virtual_sensors[i]->status() == START) {
+          //PT_INIT(&(_virtual_sensors[i]->proto()));
+          if (_virtual_sensors[i]->mode() == READ) {
+            if (count > 0)
+              strcat(response, ",");
 
-          //pusher(&(_virtual_sensors[i]->proto()), _virtual_sensors[i], response);
-          if(pusher(_virtual_sensors[i], response))
-            count++;
+            //pusher(&(_virtual_sensors[i]->proto()), _virtual_sensors[i], response);
+            if(pusher(_virtual_sensors[i], response))
+              count++;
+          }
         }
       }
     }
@@ -306,10 +309,14 @@ public:
   };
 
   // Hope for the best
-  void deleteVirtualSensor(char* id) {
-    VirtualSensor* sensor = getVirtualSensor(id);
-    delete sensor;
-    sensor = NULL;
+  bool deleteVirtualSensor(char* id) {
+    if (hasVirtualSensor(id)) {
+      VirtualSensor* sensor = getVirtualSensor(id);
+      delete sensor;
+      sensor = NULL;
+      return true;
+    }
+    return false;
   };
 
   bool pusher(VirtualSensor* sensor, char* response) {
@@ -383,7 +390,7 @@ protected:
   //int _num_digital_pins, _num_analog_pins;
   //DigitalSensor** _digital_sensors;
   //AnalogSensor** _analog_sensors;
-  int _num_virtual_sensors;
+  //int _num_virtual_sensors;
   VirtualSensor* _virtual_sensors[MAX_VIRTUAL_SENSORS];
 };
 
@@ -780,7 +787,12 @@ public:
         if (_board->hasVirtualSensor(sensors[j])) {
           // Stop sensor
           _board->stopVirtualSensor(sensors[j]);
-          _board->deleteVirtualSensor(sensors[j]);
+          if (_board->deleteVirtualSensor(sensors[j])) {
+            // TODO:Success
+          }
+          else {
+            // TODO:Fail
+          }
 
           // Concatenate to response
           if (j > 0)
