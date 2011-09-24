@@ -238,23 +238,28 @@ protected:
 // NUM_ANALOG_INPUTS
 class Arduino {
 public:
-  Arduino()
-  : _num_virtual_sensors(0) {};
+  Arduino() {};
 
   void addVirtualSensor(VirtualSensor* sensor) {
-    _virtual_sensors[_num_virtual_sensors++] = sensor;
+    for (int i = 0; i < MAX_VIRTUAL_SENSORS; ++i) {
+      if (_virtual_sensors[i] == NULL) {
+        _virtual_sensors[i] = sensor;
+      }
+    }
   };
 
   VirtualSensor* getVirtualSensor(char* id) {
-    for (int i = 0; i < _num_virtual_sensors; ++i) {
-      if (!strcmp(_virtual_sensors[i]->sensorId(), id)) {
-        return _virtual_sensors[i];
+    for (int i = 0; i < MAX_VIRTUAL_SENSORS; ++i) {
+      if (_virtual_sensors[i] != NULL) {
+        if (!strcmp(_virtual_sensors[i]->sensorId(), id)) {
+          return _virtual_sensors[i];
+        }
       }
     }
     return NULL;
   };
 
-  bool hasVirtualSensorId(char* id) {
+  bool hasVirtualSensor(char* id) {
     return getVirtualSensor(id) ? true : false;
   }
 
@@ -285,22 +290,22 @@ public:
   };
 
   void startVirtualSensor(char* id) {
-    if (getVirtualSensor(id)) {
+    if (hasVirtualSensor(id)) {
       getVirtualSensor(id)->start();
     }
   };
 
   void stopVirtualSensor(char* id) {
-    if (getVirtualSensor(id)) {
+    if (hasVirtualSensor(id)) {
       getVirtualSensor(id)->stop();
     }
   };
 
   // Hope for the best
   void deleteVirtualSensor(char* id) {
-    delete getVirtualSensor(id);
-
-    delete getVirtualSensor(id);
+    VirtualSensor* sensor = getVirtualSensor(id);
+    delete sensor;
+    sensor = NULL;
   };
 
   bool pusher(VirtualSensor* sensor, char* response) {
@@ -570,7 +575,7 @@ public:
 
 
         // Activate existing virtual sensor
-        if (_board->hasVirtualSensorId(sensor_id)) {
+        if (_board->hasVirtualSensor(sensor_id)) {
           if (DEBUG) {
             Serial.println("sensor_id");
             Serial.println(sensor_id);
@@ -626,7 +631,7 @@ public:
 
 
         // Activate existing virtual sensor
-        if (_board->hasVirtualSensorId(sensor_id)) {
+        if (_board->hasVirtualSensor(sensor_id)) {
 
           // Start sensor
           _board->getVirtualSensor(sensor_id)->setSetValue(set_value);
@@ -665,7 +670,7 @@ public:
 
       for (int j = 0; j < index; ++j) {
         // Activate existing virtual sensor
-        if (_board->hasVirtualSensorId(sensors[j])) {
+        if (_board->hasVirtualSensor(sensors[j])) {
           // Stop sensor
           _board->stopVirtualSensor(sensors[j]);
 
@@ -732,7 +737,7 @@ public:
         }
 
         // Insert new virtual sensor, if id exist then don't create
-        if (!_board->hasVirtualSensorId(sensor_id)) {
+        if (!_board->hasVirtualSensor(sensor_id)) {
 
           // Create a virtual sensor
           // VirtualSensor(char* id, char* type, int pin, int interval, char* sensitivity, char* address, int mode)
@@ -768,7 +773,7 @@ public:
 
       for (int j = 0; j < index; ++j) {
         // Activate existing virtual sensor
-        if (_board->hasVirtualSensorId(sensors[j])) {
+        if (_board->hasVirtualSensor(sensors[j])) {
           // Stop sensor
           _board->stopVirtualSensor(sensors[j]);
           _board->deleteVirtualSensor(sensors[j]);
