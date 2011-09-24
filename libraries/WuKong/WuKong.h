@@ -120,7 +120,7 @@ private:
 class VirtualSensor {
 public:
   VirtualSensor(char* id, char* type, int pin, int interval, char* sensitivity, char* address, int mode)
-  : _sensor_id(id), _type(type), _pin(pin), _interval(interval), _sensitivity(sensitivity), _address(address), _mode(mode), _val(0), _status(STOP), _hasRead(false) 
+  : _sensor_id(id), _type(type), _pin(pin), _interval(interval), _sensitivity(sensitivity), _address(address), _mode(mode), _val(0), _status(STOP), _hasRead(false), _set_value(0) 
   { 
     pinMode(_pin, mode); 
     PT_INIT(&_proto); 
@@ -174,8 +174,8 @@ public:
     digitalWrite(_pin, _val);
   };
 
-  void setSetValue(char* set_value) { _set_value = set_value; };
-  char* set_value() { return _set_value; };
+  void setSetValue(int set_value) { _set_value = set_value; };
+  int set_value() { return _set_value; };
 
   void setSensitivity(char* sensitivity) { _sensitivity = sensitivity; };
   char* sensitivity() { return _sensitivity; };
