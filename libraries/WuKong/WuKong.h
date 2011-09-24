@@ -174,6 +174,9 @@ public:
     digitalWrite(_pin, _val);
   };
 
+  void setSetValue(char* set_value) { _set_value = set_value; };
+  char* set_value() { return _set_value; };
+
   void setSensitivity(char* sensitivity) { _sensitivity = sensitivity; };
   char* sensitivity() { return _sensitivity; };
 
@@ -224,6 +227,7 @@ protected:
   char* _sensor_id, * _type, * _sensitivity, * _address;
   int _mode, _status;
   int _pin, _val, _interval; // Do we need val?
+  int _set_value;
   struct pt _proto;
   unsigned long _mark;
   bool _hasRead;
@@ -284,11 +288,15 @@ public:
   };
 
   void startVirtualSensor(char* id) {
-    getVirtualSensor(id)->start();
+    if (getVirtualSensor(id)) {
+      getVirtualSensor(id)->start();
+    }
   };
 
   void stopVirtualSensor(char* id) {
-    getVirtualSensor(id)->stop();
+    if (getVirtualSensor(id)) {
+      getVirtualSensor(id)->stop();
+    }
   };
 
   // Hope for the best
@@ -307,6 +315,7 @@ public:
 
       if (sensor->mode() == WRITE) {
         sensor->write(HIGH);
+        //sensor->write(sensot->set_value()); // for analog
       }
       else {
         sensor->read();
@@ -509,9 +518,6 @@ public:
       delay(20); // Need to experiment with it
     }
     request[index] = '\0';
-    if (DEBUG) {
-      Serial.println(request);
-    }
 
     return request;
   };
@@ -525,27 +531,14 @@ public:
     // WRITE
     // DISABLE
 
-    if (DEBUG) {
-      Serial.println("handling request");
-    }
     char* board_id = strtok(request, " ");
 
-    if (DEBUG) {
-      Serial.println("comparing board_id");
-    }
     if (strcmp(board_id, BOARD_ID))
       return;
 
-    if (DEBUG) {
-      Serial.println("grabbing command");
-    }
     char* command = strtok(NULL, " ");
     //sscanf(request, "%s %*s", command);
 
-
-    if (DEBUG) {
-      Serial.println(command);
-    }
     char response[MAX_STRING_LENGTH];
 
     if (!strcmp(command, "read")) {
@@ -615,27 +608,35 @@ public:
       sprintf(response, "success %s write sensor_id:", BOARD_ID);
 
       for (int j = 0; j < index; ++j) {
-        char sensor_id[MAX_STRING_LENGTH];
-        int sensor_value;
+
+        char sensor_id[MAX_STRING_LENGTH]; memset(sensor_id, 0, MAX_STRING_LENGTH);
+        int set_value = 0;
 
         char* attribute = strtok(sensors[j], ",");
-        while (attribute != NULL) {
+        while (attribute) {
 
           char key[MAX_STRING_LENGTH], value[MAX_STRING_LENGTH];
+          memset(key, 0, MAX_STRING_LENGTH);
+          memset(value, 0, MAX_STRING_LENGTH);
           sscanf(attribute, "%[^:]:%s", key, value);
+
+
           if (!strcmp(key, "sensor_id")) {
             strcpy(sensor_id, value);
           }
           else if (!strcmp(key, "set_value")) {
-            sensor_value = atoi(value);
+            set_value = atoi(value);
           }
 
           attribute = strtok(NULL, ",");
         }
 
+
         // Activate existing virtual sensor
         if (_board->hasVirtualSensorId(sensor_id)) {
+
           // Start sensor
+          _board->getVirtualSensor(sensor_id)->setSetValue(set_value);
           _board->getVirtualSensor(sensor_id)->setMode(WRITE);
           _board->startVirtualSensor(sensor_id);
 
