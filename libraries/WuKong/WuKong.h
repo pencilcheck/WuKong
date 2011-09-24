@@ -311,9 +311,15 @@ public:
   // Hope for the best
   bool deleteVirtualSensor(char* id) {
     if (hasVirtualSensor(id)) {
-      VirtualSensor* sensor = getVirtualSensor(id);
-      delete sensor;
-      sensor = NULL;
+      for (int i = 0; i < MAX_VIRTUAL_SENSORS; ++i) {
+        if (_virtual_sensors[i] != NULL) {
+          if (!strcmp(_virtual_sensors[i]->sensorId(), id)) {
+            delete _virtual_sensors[i];
+            _virtual_sensors[i] = NULL;
+            break;
+          }
+        }
+      }
       return true;
     }
     return false;
@@ -617,7 +623,13 @@ public:
         }
       }
 
-      Serial.println(response);
+      if (intervalIndex > 0) {
+        Serial.println(response);
+      }
+      else {
+        // Fail message
+        Serial.println("failure read");
+      }
 
       if (noIntervalIndex > 0) {
         Serial.print("read ");
