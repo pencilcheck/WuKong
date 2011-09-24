@@ -47,6 +47,26 @@ void __cxa_guard_abort (__guard *) {};
 extern "C" void __cxa_pure_virtual(void); 
 void __cxa_pure_virtual(void) {}; 
 
+#if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
+int pinMapping(char* pin) {
+  if (pin[0] == 'A') {
+    return atoi((const char*)pin+1) + A0;
+  }
+  else {
+    return atoi((const char*)pin);
+  }
+}
+#else
+int pinMapping(char* pin) {
+  if (pin[0] == 'A') {
+    return atoi((const char*)pin+1) + A0;
+  }
+  else {
+    return atoi((const char*)pin);
+  }
+}
+#endif
+
 
 static int maxId = 0;
 
@@ -55,10 +75,6 @@ char* genId() {
   char* id = (char*)malloc(3*sizeof(char));
   sprintf(id, "%d", maxId++);
 
-  if (DEBUG) {
-    Serial.println("almost done in genId");
-    Serial.println(id);
-  }
   return id;
 };
 /*
@@ -104,7 +120,11 @@ private:
 class VirtualSensor {
 public:
   VirtualSensor(char* id, char* type, int pin, int interval, char* sensitivity, char* address, int mode)
-  : _sensor_id(id), _type(type), _pin(pin), _interval(interval), _sensitivity(sensitivity), _address(address), _mode(mode), _val(0), _status(START) { pinMode(_pin, mode); };
+  : _sensor_id(id), _type(type), _pin(pin), _interval(interval), _sensitivity(sensitivity), _address(address), _mode(mode), _val(0), _status(STOP), _hasRead(false) 
+  { 
+    pinMode(_pin, mode); 
+    PT_INIT(&_proto); 
+  };
 
   ~VirtualSensor() {
     delete _sensor_id; 
@@ -113,13 +133,21 @@ public:
     delete _address;
   };
 
+  int hasRead() {
+    return _hasRead;
+  };
+  void setHasRead(bool read) {
+    _hasRead = read;
+  };
+
   int read() {
     if (_pin < A0) {
       _val = digitalRead(_pin);
       return _val;
     }
     else {
-      _val = analogRead(_pin);
+      int pin = _pin - A0;
+      _val = analogRead(pin);
       return _val;
     }
   };
@@ -130,8 +158,9 @@ public:
       digitalWrite(_pin, _val);
     }
     else {
+      int pin = _pin - A0;
       _val = val;
-      analogWrite(_pin, _val);
+      analogWrite(pin, _val);
     }
   };
 
@@ -176,8 +205,18 @@ public:
   int mark() { return _mark; };
 
   char* toString() {
-    char response[MAX_STRING_LENGTH];
-    sprintf(response, "%d:%d", _pin, _val);
+    char response[MAX_STRING_LENGTH]; memset(response, 0, MAX_STRING_LENGTH);
+    //sprintf(response, "%d:%d", _pin, _val);
+
+    char pin[MAX_STRING_LENGTH]; memset(pin, 0, MAX_STRING_LENGTH);
+    char val[MAX_STRING_LENGTH]; memset(val, 0, MAX_STRING_LENGTH);
+    itoa(_pin, pin, 10);
+    itoa(_val, val, 10);
+
+    strcat(response, pin);
+    strcat(response, ":");
+    strcat(response, val);
+
     return response;
   };
 
@@ -187,6 +226,7 @@ protected:
   int _pin, _val, _interval; // Do we need val?
   struct pt _proto;
   unsigned long _mark;
+  bool _hasRead;
 };
 
 // Already defined in pins_arduino.h for each variant
@@ -218,21 +258,26 @@ public:
     char response[MAX_STRING_LENGTH];
     memset(response, 0, MAX_STRING_LENGTH);
     
+    int count = 0;
     for (int i = 0; i < _num_virtual_sensors; ++i) {
       // run proto worker threads for tasks
       if (_virtual_sensors[i]->status() == START) {
-        PT_INIT(&(_virtual_sensors[i]->proto()));
+        //PT_INIT(&(_virtual_sensors[i]->proto()));
         if (_virtual_sensors[i]->mode() == READ) {
-          if (i > 0)
+          if (count > 0)
             strcat(response, ",");
-          pusher(&(_virtual_sensors[i]->proto()), _virtual_sensors[i], response);
+
+          //pusher(&(_virtual_sensors[i]->proto()), _virtual_sensors[i], response);
+          if(pusher(_virtual_sensors[i], response))
+            count++;
         } else {
-          pusher(&(_virtual_sensors[i]->proto()), _virtual_sensors[i], NULL);
+          //pusher(&(_virtual_sensors[i]->proto()), _virtual_sensors[i], NULL);
+          pusher(_virtual_sensors[i], NULL);
         }
       }
     }
 
-    if (strcmp(response, "")) {
+    if (strlen(response) > 0) {
       Serial.print("read ");
       Serial.println(response);
     }
@@ -251,12 +296,40 @@ public:
     delete getVirtualSensor(id);
   };
 
-  static int pusher(struct pt* pt, VirtualSensor* sensor, char* response) {
+  bool pusher(VirtualSensor* sensor, char* response) {
+
+    if (!sensor->hasRead()) {
+      sensor->setMark(millis());
+      sensor->setHasRead(true);
+    }
+
+    if((millis() - sensor->mark()) % sensor->interval() == 0) {
+
+      if (sensor->mode() == WRITE) {
+        sensor->write(HIGH);
+      }
+      else {
+        sensor->read();
+      }
+
+      // only for read
+      if (response != NULL) {
+        strcat(response, (const char*)sensor->toString());
+      }
+
+      sensor->setMark(millis());
+      return true;
+    }
+    return false;
+  }
+/*
+  static PT_THREAD(pusher(struct pt* pt, VirtualSensor* sensor, char* response) ){
     PT_BEGIN(pt);
 
     while (1) {
       sensor->setMark(millis());
       PT_WAIT_UNTIL(pt, (millis() - sensor->mark()) % sensor->interval() == 0);
+
       if (sensor->mode() == WRITE) {
         sensor->write(HIGH);
       }
@@ -264,14 +337,14 @@ public:
         sensor->read();
       }
       // only for read
-      if (response) {
+      if (response != NULL) {
         strcat(response, (const char*)sensor->toString());
       }
     }
 
     PT_END(pt);
   }
-
+*/
   //DigitalSensor** getDigitalSensors() { return _digital_sensors; };
   //int readDigitalSensor(int pin) { 
     //if (pin < _num_digital_pins)
@@ -433,7 +506,7 @@ public:
 
     while (Serial.available()) {
       request[index++] = Serial.read();
-      delay(10); // Need to experiment with it
+      delay(20); // Need to experiment with it
     }
     request[index] = '\0';
     if (DEBUG) {
@@ -486,15 +559,21 @@ public:
       sprintf(response, "success %s read sensor_id:", BOARD_ID);
 
       for (int j = 0; j < index; ++j) {
-        char* sensor_id;
-        int interval;
 
-        char* attribute = strtok(sensor, ",");
-        char* key, * value;
-        while (attribute != NULL) {
-          sscanf(attribute, "%s:%s", key, value);
+        char sensor_id[MAX_STRING_LENGTH]; memset(sensor_id, 0, MAX_STRING_LENGTH);
+        int interval = 0;
+
+        char* attribute = strtok(sensors[j], ",");
+        while (attribute) {
+
+          char key[MAX_STRING_LENGTH], value[MAX_STRING_LENGTH];
+          memset(key, 0, MAX_STRING_LENGTH);
+          memset(value, 0, MAX_STRING_LENGTH);
+          sscanf(attribute, "%[^:]:%s", key, value);
+
+
           if (!strcmp(key, "sensor_id")) {
-            sensor_id = value;
+            strcpy(sensor_id, value);
           }
           else if (!strcmp(key, "interval")) {
             interval = atoi(value);
@@ -503,8 +582,14 @@ public:
           attribute = strtok(NULL, ",");
         }
 
+
         // Activate existing virtual sensor
         if (_board->hasVirtualSensorId(sensor_id)) {
+          if (DEBUG) {
+            Serial.println("sensor_id");
+            Serial.println(sensor_id);
+          }
+
           // Start sensor
           _board->getVirtualSensor(sensor_id)->setInterval(interval);
           _board->getVirtualSensor(sensor_id)->setMode(READ);
@@ -530,15 +615,16 @@ public:
       sprintf(response, "success %s write sensor_id:", BOARD_ID);
 
       for (int j = 0; j < index; ++j) {
-        char* sensor_id;
+        char sensor_id[MAX_STRING_LENGTH];
         int sensor_value;
 
-        char* attribute = strtok(sensor, ",");
-        char* key, * value;
+        char* attribute = strtok(sensors[j], ",");
         while (attribute != NULL) {
-          sscanf(attribute, "%s:%s", key, value);
+
+          char key[MAX_STRING_LENGTH], value[MAX_STRING_LENGTH];
+          sscanf(attribute, "%[^:]:%s", key, value);
           if (!strcmp(key, "sensor_id")) {
-            sensor_id = value;
+            strcpy(sensor_id, value);
           }
           else if (!strcmp(key, "set_value")) {
             sensor_value = atoi(value);
@@ -592,9 +678,6 @@ public:
       Serial.println(response);
     }
     else if (!strcmp(command, "insert")) {
-      if (DEBUG) {
-        Serial.println("in insert");
-      }
 
       char* sensor;
       char* sensors[MAX_VIRTUAL_SENSORS];
@@ -603,54 +686,42 @@ public:
         sensors[index++] = sensor;
       }
 
-      if (DEBUG) {
-        Serial.println("got all sensors");
-      }
       sprintf(response, "success %s insert sensor_id:", BOARD_ID);
 
-      if (DEBUG) {
-        Serial.println("done sprintf response");
-      }
-
       for (int j = 0; j < index; ++j) {
-        if (DEBUG) {
-          Serial.println("in index loop");
-        }
 
         char* sensor_id = genId();
-        if (DEBUG) {
-          Serial.println("done genId");
-        }
 
-        char* type = "";
+        char type[MAX_STRING_LENGTH]; memset(type, 0, MAX_STRING_LENGTH);
         int pin = 0;
         int interval = 0;
-        char* sensitivity = "";
-        char* address = "";
+        char sensitivity[MAX_STRING_LENGTH]; memset(type, 0, MAX_STRING_LENGTH);
+        char address[MAX_STRING_LENGTH]; memset(address, 0, MAX_STRING_LENGTH);
         int mode = READ;
 
-        char* attribute = strtok(sensor, ",");
-        char* key, * value;
+        char* attribute = strtok(sensors[j], ",");
         while (attribute) {
-          if (DEBUG) {
-            Serial.println("in while attribute loop");
-          }
 
-          sscanf(attribute, "%s:%s", key, value);
+          char key[MAX_STRING_LENGTH], value[MAX_STRING_LENGTH];
+          memset(key, 0, MAX_STRING_LENGTH);
+          memset(value, 0, MAX_STRING_LENGTH);
+          sscanf(attribute, "%[^:]:%s", key, value);
+
+
           if (!strcmp(key, "type")) {
-            type = value;
+            strcpy(type, value);
           }
           else if (!strcmp(key, "pin")) {
-            pin = atoi(value);
+            pin = pinMapping(value);
           }
           else if (!strcmp(key, "interval")) {
             interval = atoi(value);
           }
           else if (!strcmp(key, "sensitivity")) {
-            sensitivity = value;
+            strcpy(sensitivity, value);
           }
           else if (!strcmp(key, "address")) {
-            address = value;
+            strcpy(address, value);
           }
           else if (!strcmp(key, "mode")) {
             mode = atoi(value);
@@ -659,49 +730,22 @@ public:
           attribute = strtok(NULL, ",");
         }
 
-        if (DEBUG) {
-          Serial.println("done with while loop");
-        }
-
         // Insert new virtual sensor, if id exist then don't create
         if (!_board->hasVirtualSensorId(sensor_id)) {
-
-          if (DEBUG) {
-            Serial.println("no existing virtual sensor id");
-          }
 
           // Create a virtual sensor
           // VirtualSensor(char* id, char* type, int pin, int interval, char* sensitivity, char* address, int mode)
           _board->addVirtualSensor(new VirtualSensor(sensor_id, type, pin, interval, sensitivity, address, mode));
           // Already started
 
-          if (DEBUG) {
-            Serial.println("added virtual sensor");
-          }
-
           // Concatenate to response
-          if (j > 0) {
+          if (j > 0)
             strcat(response, ",");
-          }
-
-          if (DEBUG) {
-            Serial.println("concatenated ,");
-          }
-
           strcat(response, sensor_id);
-
-          if (DEBUG) {
-            Serial.println("response:");
-            Serial.println(response);
-          }
         }
       }
 
       // Fail response if there is no added new sensors
-
-      if (DEBUG) {
-        Serial.println("ready to send response back");
-      }
       Serial.println(response);
     }
     else if (!strcmp(command, "update")) {

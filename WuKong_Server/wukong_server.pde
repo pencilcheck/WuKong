@@ -11,7 +11,7 @@ RequestHandler* handler;
 Arduino* board;
 
 void setup() {
-  handler = new RequestHandler(new ArduinoUno());
+  handler = new RequestHandler(new Arduino());
   board = handler->board();
 
   randomSeed(analogRead(0));
