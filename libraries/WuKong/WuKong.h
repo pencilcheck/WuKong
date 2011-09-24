@@ -316,7 +316,7 @@ public:
       for (int i = 0; i < MAX_VIRTUAL_SENSORS; ++i) {
         if (_virtual_sensors[i] != NULL) {
           if (!strcmp(_virtual_sensors[i]->sensorId(), id)) {
-            delete _virtual_sensors[i];
+            free(_virtual_sensors[i]);
             _virtual_sensors[i] = NULL;
             break;
           }
@@ -532,7 +532,7 @@ public:
 
     while (Serial.available()) {
       request[index++] = Serial.read();
-      delay(20); // Need to experiment with it
+      delay(10); // Need to experiment with it
     }
     request[index] = '\0';
 
