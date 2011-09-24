@@ -633,8 +633,10 @@ public:
           if (DEBUG) {
             Serial.println("writing");
           }
+
+          // TODO: for later, analogWrite are only available through PWM on
+          // certain "digital" pins, needs to be aware of that
           _board->getVirtualSensor(sensor_id)->write(_board->getVirtualSensor(sensor_id)->setValue());
-          //_board->getVirtualSensor(sensor_id)->write(sensot->set_value()); // for analog
 
           // Concatenate to response
           if (j > 0)
