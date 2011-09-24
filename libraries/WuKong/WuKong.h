@@ -127,10 +127,10 @@ public:
   };
 
   ~VirtualSensor() {
-    delete _sensor_id; 
-    delete _type;
-    delete _sensitivity;
-    delete _address;
+    free(_sensor_id); 
+    free(_type);
+    free(_sensitivity);
+    free(_address);
   };
 
   int hasRead() {
@@ -274,9 +274,6 @@ public:
           //pusher(&(_virtual_sensors[i]->proto()), _virtual_sensors[i], response);
           if(pusher(_virtual_sensors[i], response))
             count++;
-        } else {
-          //pusher(&(_virtual_sensors[i]->proto()), _virtual_sensors[i], NULL);
-          pusher(_virtual_sensors[i], NULL);
         }
       }
     }
@@ -313,18 +310,12 @@ public:
 
     if((millis() - sensor->mark()) % sensor->interval() == 0) {
 
-      if (sensor->mode() == WRITE) {
-        sensor->write(HIGH);
-        //sensor->write(sensot->set_value()); // for analog
+      if (DEBUG) {
+        Serial.println("in pusher reading");
       }
-      else {
-        sensor->read();
-      }
+      sensor->read();
 
-      // only for read
-      if (response != NULL) {
-        strcat(response, (const char*)sensor->toString());
-      }
+      strcat(response, (const char*)sensor->toString());
 
       sensor->setMark(millis());
       return true;
@@ -638,7 +629,12 @@ public:
           // Start sensor
           _board->getVirtualSensor(sensor_id)->setSetValue(set_value);
           _board->getVirtualSensor(sensor_id)->setMode(WRITE);
-          _board->startVirtualSensor(sensor_id);
+
+          if (DEBUG) {
+            Serial.println("writing");
+          }
+          _board->getVirtualSensor(sensor_id)->write(HIGH);
+          //_board->getVirtualSensor(sensor_id)->write(sensot->set_value()); // for analog
 
           // Concatenate to response
           if (j > 0)
