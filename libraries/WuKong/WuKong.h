@@ -238,7 +238,11 @@ protected:
 // NUM_ANALOG_INPUTS
 class Arduino {
 public:
-  Arduino() {};
+  Arduino() {
+    for (int i = 0; i < MAX_VIRTUAL_SENSORS; ++i) {
+      _virtual_sensors[i] = NULL;
+    }
+  };
 
   void addVirtualSensor(VirtualSensor* sensor) {
     for (int i = 0; i < MAX_VIRTUAL_SENSORS; ++i) {
