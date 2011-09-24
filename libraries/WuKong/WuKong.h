@@ -299,6 +299,8 @@ public:
   // Hope for the best
   void deleteVirtualSensor(char* id) {
     delete getVirtualSensor(id);
+
+    delete getVirtualSensor(id);
   };
 
   bool pusher(VirtualSensor* sensor, char* response) {
