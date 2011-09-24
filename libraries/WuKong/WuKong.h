@@ -22,7 +22,7 @@
 #define READ 0x0
 #define WRITE 0x1
 
-#define DEBUG 1
+#define DEBUG(msg) Serial.print("DEBUG:");Serial.println(msg);
 
 #define BOARD_ID "12345"
 
@@ -310,6 +310,8 @@ public:
 
   // Hope for the best
   bool deleteVirtualSensor(char* id) {
+    DEBUG("deleteVirtualSensor");
+
     if (hasVirtualSensor(id)) {
       for (int i = 0; i < MAX_VIRTUAL_SENSORS; ++i) {
         if (_virtual_sensors[i] != NULL) {
@@ -320,6 +322,9 @@ public:
           }
         }
       }
+
+      DEBUG("delete success");
+
       return true;
     }
     return false;
@@ -334,9 +339,6 @@ public:
 
     if((millis() - sensor->mark()) % sensor->interval() == 0) {
 
-      if (DEBUG) {
-        Serial.println("in pusher reading");
-      }
       sensor->read();
 
       strcat(response, (const char*)sensor->toString());
@@ -596,10 +598,6 @@ public:
 
         // Activate existing virtual sensor
         if (_board->hasVirtualSensor(sensor_id)) {
-          if (DEBUG) {
-            Serial.println("sensor_id");
-            Serial.println(sensor_id);
-          }
 
           if (interval != -1) {
             // Start sensor
@@ -678,9 +676,6 @@ public:
           _board->getVirtualSensor(sensor_id)->setSetValue(set_value);
           _board->getVirtualSensor(sensor_id)->setMode(WRITE);
 
-          if (DEBUG) {
-            Serial.println("writing");
-          }
 
           // TODO: for later, analogWrite are only available through PWM on
           // certain "digital" pins, needs to be aware of that
