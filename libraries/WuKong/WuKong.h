@@ -559,11 +559,14 @@ public:
       }
 
       sprintf(response, "success %s read sensor_id:", BOARD_ID);
+      int intervalIndex = 0;
+
+      char noIntervalResponse[MAX_STRING_LENGTH]; memset(noIntervalResponse, 0, MAX_STRING_LENGTH);
+      int noIntervalIndex = 0;
 
       for (int j = 0; j < index; ++j) {
-
         char sensor_id[MAX_STRING_LENGTH]; memset(sensor_id, 0, MAX_STRING_LENGTH);
-        int interval = 0;
+        int interval = -1;
 
         char* attribute = strtok(sensors[j], ",");
         while (attribute) {
@@ -592,19 +595,34 @@ public:
             Serial.println(sensor_id);
           }
 
-          // Start sensor
-          _board->getVirtualSensor(sensor_id)->setInterval(interval);
-          _board->getVirtualSensor(sensor_id)->setMode(READ);
-          _board->startVirtualSensor(sensor_id);
+          if (interval != -1) {
+            // Start sensor
+            _board->getVirtualSensor(sensor_id)->setInterval(interval);
+            _board->getVirtualSensor(sensor_id)->setMode(READ);
+            _board->startVirtualSensor(sensor_id);
+          }
+          else {
+            _board->getVirtualSensor(sensor_id)->read();
+            if (noIntervalIndex > 0)
+              strcat(noIntervalResponse, ",");
+            strcat(noIntervalResponse, (const char*)_board->getVirtualSensor(sensor_id)->toString());
+            noIntervalIndex++;
+          }
 
           // Concatenate to response
-          if (j > 0)
+          if (intervalIndex > 0)
             strcat(response, ",");
           strcat(response, sensor_id);
+          intervalIndex++;
         }
       }
 
       Serial.println(response);
+
+      if (noIntervalIndex > 0) {
+        Serial.print("read ");
+        Serial.println(noIntervalResponse);
+      }
     }
     else if (!strcmp(command, "write")) {
       char* sensor;
