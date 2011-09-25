@@ -279,18 +279,14 @@ public:
         if (_virtual_sensors[i]->status() == START) {
           //PT_INIT(&(_virtual_sensors[i]->proto()));
           if (_virtual_sensors[i]->mode() == READ) {
-            if (count > 0)
-              strcat(response, ",");
-
+            if (pusher(_virtual_sensors[i], response, count)) count++;
             //pusher(&(_virtual_sensors[i]->proto()), _virtual_sensors[i], response);
-            if(pusher(_virtual_sensors[i], response))
-              count++;
           }
         }
       }
     }
 
-    if (strlen(response) > 0) {
+    if (count > 0) {
       Serial.print("read ");
       Serial.println(response);
     }
@@ -316,6 +312,7 @@ public:
       for (int i = 0; i < MAX_VIRTUAL_SENSORS; ++i) {
         if (_virtual_sensors[i] != NULL) {
           if (!strcmp(_virtual_sensors[i]->sensorId(), id)) {
+            // delete is not working, use free
             free(_virtual_sensors[i]);
             _virtual_sensors[i] = NULL;
             break;
@@ -330,7 +327,7 @@ public:
     return false;
   };
 
-  bool pusher(VirtualSensor* sensor, char* response) {
+  bool pusher(VirtualSensor* sensor, char* response, int count) {
 
     if (!sensor->hasRead()) {
       sensor->setMark(millis());
@@ -341,6 +338,8 @@ public:
 
       sensor->read();
 
+      if (count > 0)
+        strcat(response, ",");
       strcat(response, (const char*)sensor->toString());
 
       sensor->setMark(millis());
@@ -791,7 +790,70 @@ public:
       Serial.println(response);
     }
     else if (!strcmp(command, "update")) {
-      // Implement later
+      char* sensor;
+      char* sensors[MAX_VIRTUAL_SENSORS];
+      int index = 0;
+      while ((sensor = strtok(NULL, " ")) != NULL) {
+        sensors[index++] = sensor;
+      }
+
+      sprintf(response, "success %s update sensor_id:", BOARD_ID);
+
+      for (int j = 0; j < index; ++j) {
+
+        char* sensor_id = genId();
+
+        char type[MAX_STRING_LENGTH]; memset(type, 0, MAX_STRING_LENGTH);
+        int pin = 0;
+        int interval = 0;
+        char sensitivity[MAX_STRING_LENGTH]; memset(type, 0, MAX_STRING_LENGTH);
+        char address[MAX_STRING_LENGTH]; memset(address, 0, MAX_STRING_LENGTH);
+        int mode = READ;
+
+        char* attribute = strtok(sensors[j], ",");
+        while (attribute) {
+
+          char key[MAX_STRING_LENGTH], value[MAX_STRING_LENGTH];
+          memset(key, 0, MAX_STRING_LENGTH);
+          memset(value, 0, MAX_STRING_LENGTH);
+          sscanf(attribute, "%[^:]:%s", key, value);
+
+
+          if (!strcmp(key, "type")) {
+            strcpy(type, value);
+          }
+          else if (!strcmp(key, "pin")) {
+            pin = pinMapping(value);
+          }
+          else if (!strcmp(key, "interval")) {
+            interval = atoi(value);
+          }
+          else if (!strcmp(key, "sensitivity")) {
+            strcpy(sensitivity, value);
+          }
+          else if (!strcmp(key, "address")) {
+            strcpy(address, value);
+          }
+          else if (!strcmp(key, "mode")) {
+            mode = atoi(value);
+          }
+
+          attribute = strtok(NULL, ",");
+        }
+
+        // update existing virtual sensor
+        if (_board->hasVirtualSensor(sensor_id)) {
+          // Update attributes
+
+          // Concatenate to response
+          if (j > 0)
+            strcat(response, ",");
+          strcat(response, sensor_id);
+        }
+      }
+
+      // Fail response if there is no added new sensors
+      Serial.println(response);
     }
     else if (!strcmp(command, "delete")) {
       char* sensors[MAX_VIRTUAL_SENSORS];

@@ -1,46 +1,67 @@
-=begin
-People count in a room
-Need to know if there is people coming in or going out
+require 'serialport'
 
-Need two IR sensors, one near the door and one two steps further inside
-both sensors are placed facing parallel to the door
+Board = Struct.new :board_id, :baud, :type, :sink_address, :location
+Sensor = Struct.new :sensor_id, :type, :pin, :interval, :sensitivity, :address, :mode, :status
 
-Need two states, one for each sensor
+$sp = SerialPort.new ARGV[0], 9600
+puts $sp.readline # starting up
 
-For example, let sensor A be the sensor near the door and sensor B be the sensor two steps in.
-and let each state with corresponding letter bind to corresponding sensors
+def describe(board_id, sensors)
+end
 
-If stateA is set before setting stateB, then we can infer that a person is comming in
-If stateB is set before setting stateA, then we can infer that a person is leaving
+def insert(board_id, sensors)
+  $sp.write(board_id + " insert " + sensors.map {|sensor| sensor.members.select {|name| not sensor[name].nil?}.map {|name| name.to_s + ":" + sensor[name].to_s if not sensor[name].nil?}.join ','}.join(' '))
 
-Take the first derivative and only care about 0 to 1 for each sensor to set states
-=end
-
-require "serialport"
-
-sp = SerialPort.new ARGV[0], 9600, 8, 1, SerialPort::NONE
-#sp = SerialPort.new ARGV[0], 9600
-puts "Done initialization"
-count = 0
-
-=begin
-puts "write JOIN"
-sp.write "JOIN"
-id = sp.read
-puts "ID:", id
-
-puts "write DESCRIBE"
-sp.write "DESCRIBE #{id}"
-puts sp.read
-=end
-
-puts "write COUNT"
-sp.puts 'C'
-
-while true
-  value = sp.gets.to_i
-  if value == 1
-    count += 1
-    puts "#{count} people in the room"
+  msg = $sp.readline
+  puts msg
+  if msg.include? "success"
+    msg.split(' ')[3].split(':')[1].split(',').zip(sensors).map do |id, sensor|
+      sensor[:sensor_id] = id
+    end
   end
 end
+
+def update(board_id, sensors)
+  $sp.write(board_id + " update " + sensors.map {|sensor| sensor.members.select {|name| not sensor[name].nil?}.map {|name| name.to_s + ":" + sensor[name].to_s if not sensor[name].nil?}.join ','}.join(' '))
+
+  msg = $sp.readline
+  if msg.include? "success"
+    msg.split(' ')[3].split(':')[1].split(',').zip(sensors).map do |id, sensor|
+      # update all members except id
+    end
+    sensors
+  end
+end
+
+def delete(board_id, sensors)
+end
+
+def disable(board_id, sensors)
+end
+
+def read(board_id, sensors)
+  puts board_id + " read " + sensors.map {|sensor| sensor.members.select {|name| name === :interval or name === :sensor_id}.map {|name| name.to_s + ":" + sensor[name].to_s}.join ','}.join(' ')
+  $sp.write(board_id + " read " + sensors.map {|sensor| sensor.members.select {|name| name === :interval or name === :sensor_id}.map {|name| name.to_s + ":" + sensor[name].to_s}.join ','}.join(' '))
+
+  while 1
+    puts $sp.readline
+  end
+  msg = $sp.readline
+  if msg.include? "success"
+    msg.split(' ')[3].split(':')[1].split(',').zip(sensors).map do |id, sensor|
+      # update all members except id
+    end
+    sensors
+  end
+end
+
+def write(board_id, sensors)
+end
+
+# Application Logic below
+# People counter
+
+sensors = [Sensor.new(nil, "PIR", 3, 10, "500/10", nil, nil, nil), Sensor.new(nil, "PIR", 4, 10, "500/10", nil, nil, nil)]
+
+puts insert("12345", sensors)
+puts read("12345", sensors)
