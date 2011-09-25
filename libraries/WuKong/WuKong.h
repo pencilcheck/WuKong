@@ -211,12 +211,12 @@ public:
     char response[MAX_STRING_LENGTH]; memset(response, 0, MAX_STRING_LENGTH);
     //sprintf(response, "%d:%d", _pin, _val);
 
-    char pin[MAX_STRING_LENGTH]; memset(pin, 0, MAX_STRING_LENGTH);
+    //char id[MAX_STRING_LENGTH]; memset(id, 0, MAX_STRING_LENGTH);
     char val[MAX_STRING_LENGTH]; memset(val, 0, MAX_STRING_LENGTH);
-    itoa(_pin, pin, 10);
+    //itoa(_sensor_id, id, 10);
     itoa(_val, val, 10);
 
-    strcat(response, pin);
+    strcat(response, _sensor_id);
     strcat(response, ":");
     strcat(response, val);
 

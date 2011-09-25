@@ -1,7 +1,7 @@
 require 'serialport'
 
 Board = Struct.new :board_id, :baud, :type, :sink_address, :location
-Sensor = Struct.new :sensor_id, :type, :pin, :interval, :sensitivity, :address, :mode, :status
+Sensor = Struct.new :sensor_id, :type, :pin, :interval, :sensitivity, :address, :mode, :status, :value
 
 $sp = SerialPort.new ARGV[0], 9600
 puts $sp.readline # starting up
@@ -58,13 +58,60 @@ end
 # Application Logic below
 # People counter
 
-sensors = [Sensor.new(nil, "PIR", 3, 10, "500/10", nil, nil, nil), Sensor.new(nil, "PIR", 2, 10, "500/10", nil, nil, nil)]
+sensors = [Sensor.new(nil, "PIR", 3, 1, "500/10", nil, nil, nil, nil), Sensor.new(nil, "PIR", 2, 1, "500/10", nil, nil, nil, nil)]
 
 puts insert("12345", sensors)
 puts read("12345", sensors)
 
+count = 0
+
+state1 = :start
+state2 = :start
+
 while 1
   read = $sp.readline.split[1..-1]
-  puts read
-  print read[0].split(',')
+  #puts read
+  if read[0].include? ','
+    read[0].split(',').each do |idvalue|
+      id = idvalue.split(':')[0]
+      value = idvalue.split(':')[1]
+
+      #puts "id:value -> " + id + ":" + value
+      sensors.select {|sensor| sensor[:sensor_id] == id}.each {|sensor| sensor[:value] = value.to_i}
+    end
+  end
+
+
+  # determine which state machine to use
+  if state1 == :start and state2 == :start
+    if sensors[0][:value] == 0 and sensors[1][:value] == 1
+      state1 = :first
+    elsif sensors[1][:value] == 0 and sensors[0][:value] == 1
+      state2 = :first
+    end
+  end
+
+  if state1 != :start
+    # 0 to 1
+    if state1 == :first and sensors[0][:value] == 0 and sensors[1][:value] == 0
+      state1 = :second
+    elsif state1 == :second and sensors[0][:value] == 1 and sensors[1][:value] == 0
+      state1 = :final
+    elsif state1 == :final and sensors[0][:value] == 1 and sensors[1][:value] == 1
+      count += 1
+      puts "people: " + count.to_s
+      state1 = :start
+    end
+  elsif state2 != :start
+    # 1 to 0
+    if state2 == :first and sensors[0][:value] == 0 and sensors[1][:value] == 0
+      state2 = :second
+    elsif state2 == :second and sensors[0][:value] == 0 and sensors[1][:value] == 1
+      state2 = :final
+    elsif state2 == :final and sensors[0][:value] == 1 and sensors[1][:value] == 1
+      count -= 1
+      puts "people: " + count.to_s
+      state2 = :start
+    end
+  end
 end
