@@ -11,15 +11,16 @@ RequestHandler* handler;
 Arduino* board;
 
 void setup() {
-  handler = new RequestHandler(new Arduino());
-  board = handler->board();
-
   randomSeed(analogRead(0));
   Serial.begin(9600);
+  handler = new RequestHandler(new Arduino());
+  board = handler->board();
+  
+  Serial.println("Starting up");
 }
 
 void loop() {
-  while (1) {
+  //while (1) {
     // Read data from all pins on the board
     //board->readAll();
 
@@ -34,6 +35,6 @@ void loop() {
     
     // Time-driven virtual sensor tasks for the board
     board->step();
-  }
+  //}
 }
 
