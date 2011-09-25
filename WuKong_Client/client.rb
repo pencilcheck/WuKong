@@ -43,9 +43,6 @@ def read(board_id, sensors)
   puts board_id + " read " + sensors.map {|sensor| sensor.members.select {|name| name === :interval or name === :sensor_id}.map {|name| name.to_s + ":" + sensor[name].to_s}.join ','}.join(' ')
   $sp.write(board_id + " read " + sensors.map {|sensor| sensor.members.select {|name| name === :interval or name === :sensor_id}.map {|name| name.to_s + ":" + sensor[name].to_s}.join ','}.join(' '))
 
-  while 1
-    puts $sp.readline
-  end
   msg = $sp.readline
   if msg.include? "success"
     msg.split(' ')[3].split(':')[1].split(',').zip(sensors).map do |id, sensor|
@@ -61,7 +58,13 @@ end
 # Application Logic below
 # People counter
 
-sensors = [Sensor.new(nil, "PIR", 3, 10, "500/10", nil, nil, nil), Sensor.new(nil, "PIR", 4, 10, "500/10", nil, nil, nil)]
+sensors = [Sensor.new(nil, "PIR", 3, 10, "500/10", nil, nil, nil), Sensor.new(nil, "PIR", 2, 10, "500/10", nil, nil, nil)]
 
 puts insert("12345", sensors)
 puts read("12345", sensors)
+
+while 1
+  read = $sp.readline.split[1..-1]
+  puts read
+  print read[0].split(',')
+end
