@@ -13,5 +13,13 @@ sink.pde: To the data sink board
 
 Framework structure
 -------------------
+Wukong/node.pde
+This is the pde file that you should modify and run it on a end point arduino
+board that transmit sensor data back to the data sink node
 
+Wukong/sink.pde
+This is the pde file that you should modify and run it on a data sink arduino
+board that receives data from the end point node
+
+Wukong/client/
 
