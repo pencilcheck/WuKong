@@ -1,6 +1,11 @@
+# We use serialport gem to support reading/writing to a serial port
 require 'serialport'
 
+# Define a board struct with an id, baud rate, type, sink_address, and location
 Board = Struct.new :board_id, :baud, :type, :sink_address, :location
+
+# Define a sensor struct with an id, type, pin, sample rate, sensitivity,
+# address, mode, status, and value
 Sensor = Struct.new :sensor_id, :type, :pin, :interval, :sensitivity, :address, :mode, :status, :value
 
 $sp = SerialPort.new ARGV[0], 9600
@@ -10,6 +15,7 @@ def describe(board_id, sensors)
 end
 
 def insert(board_id, sensors)
+  puts board_id + " insert " + sensors.map {|sensor| sensor.members.select {|name| not sensor[name].nil?}.map {|name| name.to_s + ":" + sensor[name].to_s if not sensor[name].nil?}.join ','}.join(' ')
   $sp.write(board_id + " insert " + sensors.map {|sensor| sensor.members.select {|name| not sensor[name].nil?}.map {|name| name.to_s + ":" + sensor[name].to_s if not sensor[name].nil?}.join ','}.join(' '))
 
   msg = $sp.readline

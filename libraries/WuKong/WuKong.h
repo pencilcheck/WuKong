@@ -392,7 +392,7 @@ public:
     for (int i = 0; i < _num_digital_pins; i++)
       _digital_sensors[i]->read();
   };
-*/
+  
 protected:
   //int _num_digital_pins, _num_analog_pins;
   //DigitalSensor** _digital_sensors;
@@ -400,7 +400,7 @@ protected:
   //int _num_virtual_sensors;
   VirtualSensor* _virtual_sensors[MAX_VIRTUAL_SENSORS];
 };
-
+*/
 /*
 class ArduinoUno: public Arduino {
 public:
