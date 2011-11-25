@@ -2,7 +2,7 @@
 
 XBee xbee = XBee();
 
-uint8_t payload[] = {0, 0, 0};
+uint8_t payload[] = {0, 0, 0, 0, 0, 0};
 
 // SH + SL of XBee coordinator
 XBeeAddress64 addr64 = XBeeAddress64(0x0013A200, 0x407734C4);
@@ -10,14 +10,21 @@ XBeeAddress64 addr64 = XBeeAddress64(0x0013A200, 0x407734C4);
 ZBTxRequest zbTx = ZBTxRequest(addr64, payload, sizeof(payload));
 ZBTxStatusResponse txStatus = ZBTxStatusResponse();
 
-int leftPin = 8;
-int rightPin = 4;
-int doorPin = 3;
+int inMotionPin = 3;
+int inIR1Pin = 4;
+int inIR2Pin = 5;
+
+int outMotionPin = 7;
+int outIR1Pin = 9;
+int outIR2Pin = 11;
 
 void setup() {
-  pinMode(leftPin, INPUT);
-  pinMode(rightPin, INPUT);
-  pinMode(doorPin, INPUT);
+  pinMode(outMotionPin, INPUT);
+  pinMode(inMotionPin, INPUT);
+  pinMode(outIR1Pin, INPUT);
+  pinMode(outIR2Pin, INPUT);
+  pinMode(inIR1Pin, INPUT);
+  pinMode(inIR2Pin, INPUT);
   //Serial.begin(9600);
   xbee.begin(9600);
 }
@@ -36,9 +43,12 @@ void loop() {
   */
   
   // Use XBee library to transmit data
-  payload[0] = digitalRead(leftPin);
-  payload[1] = digitalRead(rightPin);
-  payload[2] = digitalRead(doorPin);
+  payload[0] = digitalRead(outMotionPin);
+  payload[1] = digitalRead(outIR1Pin);
+  payload[2] = digitalRead(outIR2Pin);
+  payload[3] = digitalRead(inMotionPin);
+  payload[4] = digitalRead(inIR1Pin);
+  payload[5] = digitalRead(inIR2Pin);
   
   xbee.send(zbTx);
   /*

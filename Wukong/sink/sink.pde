@@ -37,6 +37,9 @@ void loop()
       Serial.print(rx.getData(0), DEC);
       Serial.print(rx.getData(1), DEC);
       Serial.print(rx.getData(2), DEC);
+      Serial.print(rx.getData(3), DEC);
+      Serial.print(rx.getData(4), DEC);
+      Serial.print(rx.getData(5), DEC);
       Serial.print("\n");
     } else if (xbee.getResponse().getApiId() == MODEM_STATUS_RESPONSE) {
       //xbee.getResponse().getModemStatusResponse(msr);
