@@ -35,12 +35,17 @@ void loop()
       */
       // Received packet in decimal
       Serial.print(rx.getData(0), DEC);
+      Serial.print(",");
       Serial.print(rx.getData(1), DEC);
+      Serial.print(",");
       Serial.print(rx.getData(2), DEC);
+      Serial.print(",");
       Serial.print(rx.getData(3), DEC);
+      Serial.print(",");
       Serial.print(rx.getData(4), DEC);
+      Serial.print(",");
       Serial.print(rx.getData(5), DEC);
-      Serial.print("\n");
+      Serial.println();
     } else if (xbee.getResponse().getApiId() == MODEM_STATUS_RESPONSE) {
       //xbee.getResponse().getModemStatusResponse(msr);
       Serial.println("modem received above");  
@@ -57,5 +62,4 @@ void loop()
       }
     }
   }
-  
 }

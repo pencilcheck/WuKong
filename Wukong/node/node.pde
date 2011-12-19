@@ -10,62 +10,67 @@ XBeeAddress64 addr64 = XBeeAddress64(0x0013A200, 0x407734C4);
 ZBTxRequest zbTx = ZBTxRequest(addr64, payload, sizeof(payload));
 ZBTxStatusResponse txStatus = ZBTxStatusResponse();
 
-int inMotionPin = 3;
-int inIR1Pin = 4;
-int inIR2Pin = 5;
-
-int outMotionPin = 7;
-int outIR1Pin = 9;
-int outIR2Pin = 11;
+int outMotionPin = A0;
+int outIR1Pin = A1;
+int outIR2Pin = A2;
+int inMotionPin = A3;
+int inIR1Pin = A4;
+int inIR2Pin = A5;
 
 void setup() {
   pinMode(outMotionPin, INPUT);
   pinMode(inMotionPin, INPUT);
-  pinMode(outIR1Pin, INPUT);
-  pinMode(outIR2Pin, INPUT);
-  pinMode(inIR1Pin, INPUT);
-  pinMode(inIR2Pin, INPUT);
   //Serial.begin(9600);
   xbee.begin(9600);
 }
 
-void loop() {
-  //char msg[150];
-  //sprintf(msg, "left %d,right %d,door %d", digitalRead(leftPin), digitalRead(rightPin), digitalRead(doorPin));
-  //Serial.println(msg);
-  /*
-  // Write 3 bytes for each iteration left, right, and door
-  Serial.print(digitalRead(leftPin));
-  Serial.print(digitalRead(rightPin));
-  Serial.print(digitalRead(doorPin));
-  Serial.print('\n');
-  delay(10);
-  */
+void loop() {  
+  
+  int outMotion = digitalRead(outMotionPin);
+  int inMotion = digitalRead(inMotionPin);
   
   // Use XBee library to transmit data
-  payload[0] = digitalRead(outMotionPin);
-  payload[1] = digitalRead(outIR1Pin);
-  payload[2] = digitalRead(outIR2Pin);
-  payload[3] = digitalRead(inMotionPin);
-  payload[4] = digitalRead(inIR1Pin);
-  payload[5] = digitalRead(inIR2Pin);
+  float voltOutIR1 = analogRead(outIR1Pin) * 0.0049;
+  float voltOutIR2 = analogRead(outIR2Pin) * 0.0049;
+  float voltInIR1 = analogRead(inIR1Pin) * 0.0049;
+  float voltInIR2 = analogRead(inIR2Pin) * 0.0049;
+ 
+  // used wolfram alpha and got the inverse function for the graph
+  int distOutIR1 = 187.828 * pow(2.718281828, -0.917212 * voltOutIR1);
+  int distOutIR2 = 187.828 * pow(2.718281828, -0.917212 * voltOutIR2);
+  int distInIR1 = 187.828 * pow(2.718281828, -0.917212 * voltInIR1);
+  int distInIR2 = 187.828 * pow(2.718281828, -0.917212 * voltInIR2);
+  
+  // some blogger's function
+  //int distOutIR1 = 65 * pow(voltOutIR1, -1.10);
+  //int distOutIR2 = 65 * pow(voltOutIR2, -1.10);
+  //int distInIR1 = 65 * pow(voltInIR1, -1.10);
+  //int distInIR2 = 65 * pow(voltInIR2, -1.10);
+
+  payload[0] = outMotion;
+  payload[1] = distOutIR1;
+  payload[2] = distOutIR2;
+  payload[3] = inMotion;
+  payload[4] = distInIR1;
+  payload[5] = distInIR2;
+
+  // debugging
+  //Serial.println(outMotion);
+  /*
+  Serial.print(digitalRead(outMotionPin));
+  Serial.print(",");
+  Serial.print(distOutIR1);  
+  Serial.print(",");
+  Serial.print(distOutIR2);  
+  Serial.print(",");
+  Serial.print(digitalRead(inMotionPin));  
+  Serial.print(",");
+  Serial.print(distInIR1);  
+  Serial.print(",");
+  Serial.print(distInIR2);  
+  Serial.println();
+  */
   
   xbee.send(zbTx);
-  /*
-  if (xbee.readPacket(10)) {
-    if (xbee.getResponse().getApiId() == ZB_TX_STATUS_RESPONSE) {
-      xbee.getResponse().getZBTxStatusResponse(txStatus);
-      
-      if (txStatus.getDeliveryStatus() == SUCCESS) {
-      }
-      else {
-      }
-    }
-  } else if (xbee.getResponse().isError()) {
-    
-  }
-  */
-  //xbee.readPacket(1);
-  delay(20);
-  
+  delay(10);
 }
