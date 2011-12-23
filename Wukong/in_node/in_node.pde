@@ -9,7 +9,8 @@ uint8_t payload[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 // SH + SL of XBee coordinator
 //XBeeAddress64 addr64 = XBeeAddress64(0x0013A200, 0x407734C4);
-XBeeAddress64 addr64 = XBeeAddress64(0x0, 0xFFFF);
+// Need both 0x0 to broadcast to coordinator
+XBeeAddress64 addr64 = XBeeAddress64(0x0, 0x0);
 ZBTxRequest zbTx = ZBTxRequest(addr64, payload, sizeof(payload));
 ZBTxStatusResponse txStatus = ZBTxStatusResponse();
 
@@ -36,43 +37,27 @@ void setup() {
   // to prevent lower sensitivity for other sensors
   digitalWrite(inMP5, HIGH);
   
-  //Serial.begin(9600);
   xbee.begin(9600);
+
+  //DEBUG
+  //Serial.begin(9600);
   
   randomSeed(analogRead(0));
   id = random(10);
 }
 
 void loop() {
-
-  xbee.readPacket();
-  
-  if (xbee.getResponse().isAvailable()) {
-    
-    if (xbee.getResponse().getApiId() == ZB_RX_RESPONSE) {
-      xbee.getResponse().getZBRxResponse(rx);
-      
-      if (rx.getData(0) == 'r') {
-        if (id == rx.getData(1)) {
-          id = rx.getData(2);
-          registered = 1;
-        }
-      }
-    } else if (xbee.getResponse().getApiId() == MODEM_STATUS_RESPONSE) {
-      xbee.getResponse().getModemStatusResponse(msr);
-      Serial.println("Modem received");
-    } else if (xbee.getResponse().isError()) {
-      if (xbee.getResponse().getErrorCode() == 1) Serial.println("Checksum failure");
-      else if (xbee.getResponse().getErrorCode() == 2) Serial.println("Packet Exceeds Byte Array Length");
-      else if (xbee.getResponse().getErrorCode() == 3) Serial.println("Unexpected start byte");
-    }
-  }
   
   if (!registered) {
+    //DEBUG
+    //Serial.println("not registered");
     payload[0] = 'b';
     payload[1] = id;
   }
   else {
+    //DEBUG
+    //Serial.println("registered");
+    
     int inIRV0 = digitalRead(inIRP0);
     int inIRV1 = digitalRead(inIRP1);
     int inIRV2 = digitalRead(inIRP2);
@@ -90,13 +75,41 @@ void loop() {
     payload[7] = inIRV4;
     payload[8] = inMV5;
   }
-  /*
-  // Received packet in decimal
-  for (i = 0; i < sizeof(payload); ++i) {
-    Serial.print(payload[i]);
-  }
-  Serial.println();
-  */
+  
   xbee.send(zbTx);
-  delay(10);
+  //DEBUG
+  //Serial.println();
+  
+  xbee.readPacket(500);
+  
+  if (xbee.getResponse().isAvailable()) {
+    
+    if (xbee.getResponse().getApiId() == ZB_RX_RESPONSE) {
+      xbee.getResponse().getZBRxResponse(rx);
+      
+      if (rx.getOption() == ZB_PACKET_ACKNOWLEDGED) {
+        //Serial.println("ACK sent");
+      }
+      
+      if (rx.getData(0) == 'r') {
+        //DEBUG
+        //Serial.println("receiving reply");
+        
+        if (id == rx.getData(1)) {
+          //DEBUG
+          //Serial.println("matched id");  
+          registered = 1;
+          id = rx.getData(2);
+        }
+      }
+    } else if (xbee.getResponse().getApiId() == MODEM_STATUS_RESPONSE) {
+      xbee.getResponse().getModemStatusResponse(msr);
+      Serial.println("Modem received");
+    } else if (xbee.getResponse().isError()) {
+      if (xbee.getResponse().getErrorCode() == 1) Serial.println("Checksum failure");
+      else if (xbee.getResponse().getErrorCode() == 2) Serial.println("Packet Exceeds Byte Array Length");
+      else if (xbee.getResponse().getErrorCode() == 3) Serial.println("Unexpected start byte");
+    }
+  }
+  
 }

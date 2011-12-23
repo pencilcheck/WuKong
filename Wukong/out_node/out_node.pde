@@ -9,7 +9,8 @@ uint8_t payload[] = {0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 // SH + SL of XBee coordinator
 //XBeeAddress64 addr64 = XBeeAddress64(0x0013A200, 0x407734C4);
-XBeeAddress64 addr64 = XBeeAddress64(0x0, 0xFFFF);
+// Need both 0x0 to broadcast to coordinator
+XBeeAddress64 addr64 = XBeeAddress64(0x0, 0x0);
 ZBTxRequest zbTx = ZBTxRequest(addr64, payload, sizeof(payload));
 ZBTxStatusResponse txStatus = ZBTxStatusResponse();
 
@@ -44,29 +45,6 @@ void setup() {
 }
 
 void loop() {
-
-  xbee.readPacket();
-  
-  if (xbee.getResponse().isAvailable()) {
-    
-    if (xbee.getResponse().getApiId() == ZB_RX_RESPONSE) {
-      xbee.getResponse().getZBRxResponse(rx);
-      
-      if (rx.getData(0) == 'r') {
-        if (id == rx.getData(1)) {
-          id = rx.getData(2);
-          registered = 1;
-        }
-      }
-    } else if (xbee.getResponse().getApiId() == MODEM_STATUS_RESPONSE) {
-      xbee.getResponse().getModemStatusResponse(msr);
-      Serial.println("Modem received");
-    } else if (xbee.getResponse().isError()) {
-      if (xbee.getResponse().getErrorCode() == 1) Serial.println("Checksum failure");
-      else if (xbee.getResponse().getErrorCode() == 2) Serial.println("Packet Exceeds Byte Array Length");
-      else if (xbee.getResponse().getErrorCode() == 3) Serial.println("Unexpected start byte");
-    }
-  }
   
   if (!registered) {
     payload[0] = 'b';
@@ -98,5 +76,33 @@ void loop() {
   
   
   xbee.send(zbTx);
-  delay(10);
+
+  xbee.readPacket(500);
+  
+  if (xbee.getResponse().isAvailable()) {
+    
+    if (xbee.getResponse().getApiId() == ZB_RX_RESPONSE) {
+      xbee.getResponse().getZBRxResponse(rx);
+      
+      if (rx.getOption() == ZB_PACKET_ACKNOWLEDGED) {
+        //Serial.println("ACK sent");
+      }
+      
+      if (rx.getData(0) == 'r') {
+        
+        if (id == rx.getData(1)) {
+          
+          registered = 1;
+          id = rx.getData(2);
+        }
+      }
+    } else if (xbee.getResponse().getApiId() == MODEM_STATUS_RESPONSE) {
+      xbee.getResponse().getModemStatusResponse(msr);
+      Serial.println("Modem received");
+    } else if (xbee.getResponse().isError()) {
+      if (xbee.getResponse().getErrorCode() == 1) Serial.println("Checksum failure");
+      else if (xbee.getResponse().getErrorCode() == 2) Serial.println("Packet Exceeds Byte Array Length");
+      else if (xbee.getResponse().getErrorCode() == 3) Serial.println("Unexpected start byte");
+    }
+  }
 }

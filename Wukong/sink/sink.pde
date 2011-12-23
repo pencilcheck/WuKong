@@ -7,7 +7,7 @@ ModemStatusResponse msr = ModemStatusResponse();
 
 uint8_t payload[] = {0, 0, 0, 0, 0, 0};
 
-// SH + SL, but 0x0 and 0xFFFF is for broadcast
+// SH + SL, but 0x0 and 0xFFFF is for broadcast to routers
 XBeeAddress64 addr64 = XBeeAddress64(0x0, 0xFFFF);
 ZBTxRequest zbTx = ZBTxRequest(addr64, payload, sizeof(payload));
 ZBTxStatusResponse txStatus = ZBTxStatusResponse();
@@ -82,15 +82,23 @@ void loop()
     if (xbee.getResponse().getApiId() == ZB_RX_RESPONSE) {
       xbee.getResponse().getZBRxResponse(rx);
       
+      if (rx.getOption() == ZB_PACKET_ACKNOWLEDGED) {
+        //Serial.println("ACK sent");
+      }
+      
       if (rx.getData(0) == 'b') {
-        Serial.println("in b");
-        
+               
         int callbackId = rx.getData(1);
         
         if (replied(callbackId)) {
           //TODO: multiple callbackid message from the same node
+          Serial.print(callbackId);
+          Serial.println(" already replied");
         }
         else {
+          Serial.print("new callback id ");
+          Serial.println(callbackId);
+          
           addCallbackId(callbackId);
           
           int newId = newRegisterId(callbackId);
@@ -101,16 +109,33 @@ void loop()
           
           xbee.send(zbTx);
           
-          Serial.println("sent r");
+          if (xbee.readPacket(10)) {
+            if (xbee.getResponse().getApiId() == ZB_TX_STATUS_RESPONSE) {
+              xbee.getResponse().getZBTxStatusResponse(txStatus);
+              
+              if (txStatus.getDeliveryStatus() == SUCCESS) {
+                //Serial.println("Received ACK");
+              }
+              else {
+              }
+            }
+          }
+          else if (xbee.getResponse().isError()) {
+          }
+          else {
+          }
         }
       }
       else if (rx.getData(0) == 'd') {
-        Serial.println("in d");
-        
         int id = rx.getData(1);
         
         if (registered(id)) {
-          int length = rx.getData(2);
+          
+          int length = rx.getData(2) + 3;
+
+          Serial.print(id);
+          Serial.print(",");
+
           for (i = 3; i < length; ++i) {
             Serial.print(rx.getData(i));
           }
