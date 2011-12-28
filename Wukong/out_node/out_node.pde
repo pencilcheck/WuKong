@@ -92,32 +92,32 @@ void loop() {
   }
   else {
     int inIRV0 = digitalRead(inIRP0);
-    int inIRV1 = analogRead(inIRP1) * 0.0049;
+    int inIRV1 = digitalRead(inIRP1);
+    int inIRV2 = digitalRead(inIRP2);
+    /*int inIRV1 = analogRead(inIRP1) * 0.0049;
     int inIRV2 = analogRead(inIRP2) * 0.0049;
     int inIRV3 = analogRead(inIRP3) * 0.0049;
-    int inIRV4 = analogRead(inIRP4) * 0.0049;
+    int inIRV4 = analogRead(inIRP4) * 0.0049;*/
     int inMV5 = digitalRead(inMP5);
     
-    int inDist1 = 187.828 * pow(2.718281828, -0.917212 * inIRV1);
+    /*int inDist1 = 187.828 * pow(2.718281828, -0.917212 * inIRV1);
     int inDist2 = 187.828 * pow(2.718281828, -0.917212 * inIRV2);
     int inDist3 = 187.828 * pow(2.718281828, -0.917212 * inIRV3);
-    int inDist4 = 187.828 * pow(2.718281828, -0.917212 * inIRV4);
+    int inDist4 = 187.828 * pow(2.718281828, -0.917212 * inIRV4);*/
   
     payload[0] = 'd';
     payload[1] = id;
-    payload[2] = 6;
+    payload[2] = 4;
     payload[3] = inIRV0;
-    payload[4] = inDist1;
-    payload[5] = inDist2;
-    payload[6] = inDist3;
-    payload[7] = inDist4;
-    payload[8] = inMV5;
+    payload[4] = inIRV1;
+    payload[5] = inIRV2;
+    payload[6] = inMV5;
   }
   
   
   xbee.send(zbTx);
 
-  xbee.readPacket(500);
+  xbee.readPacket(20);
   
   if (xbee.getResponse().isAvailable()) {
     

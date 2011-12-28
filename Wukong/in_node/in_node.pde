@@ -1,4 +1,4 @@
-#include <XBee.h>
+ #include <XBee.h>
 
 class Profile {
   public:
@@ -63,7 +63,7 @@ int inIRP1 = A1;
 int inIRP2 = A2;
 int inIRP3 = A3;
 int inIRP4 = A4;
-int inMP5 = A5;
+int inIRP5 = A5;
 
 void setup() {
   pinMode(inIRP0, INPUT);
@@ -71,11 +71,11 @@ void setup() {
   pinMode(inIRP2, INPUT);
   pinMode(inIRP3, INPUT);
   pinMode(inIRP4, INPUT);
-  pinMode(inMP5, INPUT);
+  pinMode(inIRP5, INPUT);
   
   // pullup resistor to draw less current to the motion sensor,
   // to prevent lower sensitivity for other sensors
-  digitalWrite(inMP5, HIGH);
+  //digitalWrite(inMP5, HIGH);
   
   xbee.begin(9600);
 
@@ -103,7 +103,7 @@ void loop() {
     int inIRV2 = digitalRead(inIRP2);
     int inIRV3 = digitalRead(inIRP3);
     int inIRV4 = digitalRead(inIRP4);
-    int inMV5 = digitalRead(inMP5);
+    int inIRV5 = digitalRead(inIRP5);
   
     payload[0] = 'd';
     payload[1] = id;
@@ -113,14 +113,14 @@ void loop() {
     payload[5] = inIRV2;
     payload[6] = inIRV3;
     payload[7] = inIRV4;
-    payload[8] = inMV5;
+    payload[8] = inIRV5;
   }
   
   xbee.send(zbTx);
   //DEBUG
   //Serial.println();
   
-  xbee.readPacket(500);
+  xbee.readPacket(20);
   
   if (xbee.getResponse().isAvailable()) {
     
