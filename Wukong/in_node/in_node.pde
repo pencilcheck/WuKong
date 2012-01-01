@@ -13,13 +13,15 @@ ZBTxStatusResponse txStatus = ZBTxStatusResponse();
 
 void setup() {
   pinMode(A0, INPUT);
-
+  pinMode(A1, INPUT);
+  
   xbee.begin(9600);
   Serial.begin(9600);
 }
 
 void loop() {
   payload[0] = digitalRead(A0);
+  payload[1] = digitalRead(A1);
   
   xbee.send(zbTx);
   delay(20);
