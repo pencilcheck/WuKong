@@ -18,7 +18,9 @@ void loop()
     if (xbee.getResponse().getApiId() == ZB_RX_RESPONSE) {
       xbee.getResponse().getZBRxResponse(rx);
       
-      Serial.println(rx.getData(0));
+      Serial.print(rx.getData(0));
+      Serial.print(",");
+      Serial.println(rx.getData(1));
     } else if (xbee.getResponse().getApiId() == MODEM_STATUS_RESPONSE) {
       Serial.println("Modem received");
     } else if (xbee.getResponse().isError()) {
