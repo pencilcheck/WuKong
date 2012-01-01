@@ -20,7 +20,9 @@ void loop()
       
       Serial.print(rx.getData(0));
       Serial.print(",");
-      Serial.println(rx.getData(1));
+      Serial.print(rx.getData(1));
+      Serial.print(",");
+      Serial.println(rx.getData(2));
     } else if (xbee.getResponse().getApiId() == MODEM_STATUS_RESPONSE) {
       Serial.println("Modem received");
     } else if (xbee.getResponse().isError()) {
