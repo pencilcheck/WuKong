@@ -59,25 +59,20 @@ int id = 0;
 int i;
 
 int inIRP0 = A0;
-int inIRP1 = A1;
-int inIRP2 = A2;
-int inIRP3 = A3;
-int inIRP4 = A4;
-int inMP5 = A5;
+int inMOP = A1;
+int inIRP1 = A2;
+
+void input(int pin) {
+  pinMode(pin, INPUT);
+}
+
+float distance(float volt) {
+  float intermediate = volt * 0.0049;
+  return 187.828 * pow(2.718281828, -0.917212 * intermediate);
+}
 
 void setup() {
-  pinMode(inIRP0, INPUT);
-  pinMode(inIRP1, INPUT);
-  pinMode(inIRP2, INPUT);
-  pinMode(inIRP3, INPUT);
-  pinMode(inIRP4, INPUT);
-  pinMode(inMP5, INPUT);
-  
-  // pullup resistor to draw less current to the motion sensor,
-  // to prevent lower sensitivity for other sensors
-  digitalWrite(inMP5, HIGH);
-  
-  //Serial.begin(9600);
+  Serial.begin(9600);
   xbee.begin(9600);
   
   randomSeed(analogRead(0));
@@ -91,34 +86,21 @@ void loop() {
     payload[1] = id;
   }
   else {
-    int inIRV0 = digitalRead(inIRP0);
-    int inIRV1 = digitalRead(inIRP1);
-    int inIRV2 = digitalRead(inIRP2);
-    /*int inIRV1 = analogRead(inIRP1) * 0.0049;
-    int inIRV2 = analogRead(inIRP2) * 0.0049;
-    int inIRV3 = analogRead(inIRP3) * 0.0049;
-    int inIRV4 = analogRead(inIRP4) * 0.0049;*/
-    int inMV5 = digitalRead(inMP5);
-    
-    /*int inDist1 = 187.828 * pow(2.718281828, -0.917212 * inIRV1);
-    int inDist2 = 187.828 * pow(2.718281828, -0.917212 * inIRV2);
-    int inDist3 = 187.828 * pow(2.718281828, -0.917212 * inIRV3);
-    int inDist4 = 187.828 * pow(2.718281828, -0.917212 * inIRV4);*/
+    int inDist = distance(analogRead(inIRP0));
+    int inMotion = digitalRead(inMOP);
+    int inDist2 = distance(analogRead(inIRP1));
   
     payload[0] = 'd';
     payload[1] = id;
-    payload[2] = 4;
-    payload[3] = inIRV0;
-    payload[4] = inIRV1;
-    payload[5] = inIRV2;
-    payload[6] = inMV5;
+    payload[2] = 3;
+    payload[3] = inDist;
+    payload[4] = inMotion;
+    payload[5] = inDist2;
   }
-  
-  
+    
   xbee.send(zbTx);
 
-  xbee.readPacket(20);
-  
+  xbee.readPacket(10);
   if (xbee.getResponse().isAvailable()) {
     
     if (xbee.getResponse().getApiId() == ZB_RX_RESPONSE) {
@@ -136,7 +118,6 @@ void loop() {
       else if (rx.getData(0) == 'r') {
         
         if (id == rx.getData(1)) {
-          
           registered = 1;
           id = rx.getData(2);
         }

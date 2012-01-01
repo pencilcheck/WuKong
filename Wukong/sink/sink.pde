@@ -38,7 +38,7 @@ int replied(int callbackId) {
 
 int newRegisterId(int callbackId) {
   int newId = callbackId;
-  while (registered(newId)) {
+  while (registered(newId) >= 0) {
     newId = random(10);
   }
   
@@ -53,10 +53,10 @@ int newRegisterId(int callbackId) {
 int registered(int id) {
   for (i = 0; i < maxId; ++i) {
     if (id == ids[i]) {
-      return true;
+      return i;
     }
   }
-  return false;
+  return -1;
 }
 
 void setup()
@@ -71,15 +71,7 @@ void setup()
 }
 
 void loop()
-{
-  /*
-  if (Serial.available() > 0) {
-    command = Serial.read();
-    Serial.print("command received: ");
-    Serial.println(command);
-  }
-  */
-  
+{ 
   xbee.readPacket();
   
   if (xbee.getResponse().isAvailable()) {
@@ -124,7 +116,7 @@ void loop()
         Serial.println("got location response");
         int id = rx.getData(1);
         
-        if (registered(id)) {
+        if (registered(id) >= 0) {
           
           char* location = (char*)malloc(sizeof(char) * (rx.getData(2)+1));
           for (i = 0; i < rx.getData(2); ++i) {
@@ -146,26 +138,19 @@ void loop()
       else if (rx.getData(0) == 'd') {
         int id = rx.getData(1);
         
-        if (registered(id)) {
-          
-          int length = rx.getData(2) + 3;
+        if (registered(id) >= 0) {
+          int offset = 3;
+          int length = rx.getData(2);
 
           Serial.print(id);
           Serial.print(":");
           
-          int j;
-          for (j = 0; j < 5; ++j) {
-            if (ids[j] == id) {
-              break;
-            }
-          }
-          
-          Serial.print(locations[j]);
+          Serial.print(locations[registered(id)]);
           Serial.print(":");
           
-          for (i = 3; i < length; ++i) {
+          for (i = offset; i < length+offset; ++i) {
             Serial.print(rx.getData(i));
-            if (i < length-1) Serial.print(',');
+            if (i < length+offset-1) Serial.print(',');
           }
           Serial.println();
         }

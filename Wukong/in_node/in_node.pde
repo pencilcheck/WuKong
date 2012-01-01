@@ -1,50 +1,11 @@
  #include <XBee.h>
 
-class Profile {
-  public:
-  Profile();
-  
-  private:
-  int type;
-};
-
-class Node {
-  public:
-  Node()
-  : numProfiles(0) {
-  };
-  
-  int addProfile(Profile* p) {
-    if (numProfiles < 10) {
-      profiles[numProfiles++] = p;
-      return numProfiles-1;
-    }
-    else {
-      return -1;
-    }
-  };
-  
-  Profile* removeProfile(int index) {
-    Profile* p = profiles[index];
-    profiles[index] = 0;
-    for (int i = index; i < 9; ++i) {
-      profiles[i] = profiles[i+1];
-    }
-    profiles[9] = 0;
-    return p;
-  };
-  
-  private:
-  int numProfiles;
-  Profile* profiles[10];
-};
-
 XBee xbee = XBee();
 XBeeResponse response = XBeeResponse();
 ZBRxResponse rx = ZBRxResponse();
 ModemStatusResponse msr = ModemStatusResponse();
 
-uint8_t payload[] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t payload[] = {0, 0, 0, 0};
 
 // SH + SL of XBee coordinator
 //XBeeAddress64 addr64 = XBeeAddress64(0x0013A200, 0x407734C4);
@@ -59,28 +20,12 @@ int id = 0;
 int i;
 
 int inIRP0 = A0;
-int inIRP1 = A1;
-int inIRP2 = A2;
-int inIRP3 = A3;
-int inIRP4 = A4;
-int inIRP5 = A5;
 
 void setup() {
   pinMode(inIRP0, INPUT);
-  pinMode(inIRP1, INPUT);
-  pinMode(inIRP2, INPUT);
-  pinMode(inIRP3, INPUT);
-  pinMode(inIRP4, INPUT);
-  pinMode(inIRP5, INPUT);
-  
-  // pullup resistor to draw less current to the motion sensor,
-  // to prevent lower sensitivity for other sensors
-  //digitalWrite(inMP5, HIGH);
   
   xbee.begin(9600);
-
-  //DEBUG
-  //Serial.begin(9600);
+  Serial.begin(9600);
   
   randomSeed(analogRead(0));
   id = random(10);
